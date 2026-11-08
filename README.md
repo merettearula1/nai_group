@@ -36,9 +36,9 @@ P04  ?pid=P04&condition=2&math=A
 |---|---|
 | 0 | Start screen, consent, fullscreen opens |
 | 1 | Background questions (age, gender, education) |
-| 2 | Video alone (single), then 6 multiple-choice questions |
+| 2 | Video alone (single), then 6 multiple-choice questions (6 minutes in total, with a countdown) |
 | 3 | Math alone (single), 5 minutes |
-| 4 | Video and math at the same time (multi). Math ends when the video ends. Then 6 questions on the video. |
+| 4 | Video and math at the same time (multi). Math ends when the video ends. Then 6 questions on the video (6 minutes, with a countdown). |
 | 5 | End screen: results, debrief, CSV download |
 
 Math problems come from two fixed lists, A and B. Each list has 50 problems with three numbers and only + and −, shown in the same order to everyone. If a participant reaches the end of a list, it starts again from problem 1. The lists are in `CONFIG.math.fixedProblems`.
@@ -115,7 +115,9 @@ No name, email, IP address, location, camera, microphone or keystrokes outside t
 |---|---|
 | `question_shown` | `video`, `task_condition`, `item_index`, `item_id`, `difficulty` |
 | `question_answer` | Same fields, plus `stimulus` (question), `correct_answer`, `response` (chosen option text), `response_index`, `correct`, `rt_ms` (time to press Continue). `details.first_choice_rt_ms` = time to the first click on an option. |
-| `questions_end` | `details`: `correct` and `n` (number of questions) |
+| `questions_start` | "Start questions" clicked; the 6-minute limit starts. `details.time_limit_sec` |
+| `question_timeout` | Time ran out before this question was answered (one row per remaining question). `correct` = 0 |
+| `questions_end` | `details`: `correct`, `answered`, `timed_out`, `n` (number of questions), `reason` (`all_answered` / `time_limit`) |
 | `question_skipped` | Test mode only: question skipped with the Skip button |
 
 **Math**
@@ -135,6 +137,9 @@ No name, email, IP address, location, camera, microphone or keystrokes outside t
 | `video_start` | Video started loading. `details`: type, URL, expected length. |
 | `video_ready` | YouTube player ready |
 | `video_state` | Player state: `response` = `playing` / `paused` / `buffering` / `ended` …. `details.current_time` = position in seconds. |
+| `video_state` = `play_assumed` | ERR video: the participant clicked ▶ (or no click was seen within 30 s). The 4:36 timer starts here. `details`: `trigger` (`player_click` / `no_click_timeout`), `wait_ms` (time from player shown to click), `cut_after_sec` |
+| `video_player_focus` | ERR video: participant clicked or focused the player again after it started; focus was taken back |
+| `video_key_blocked` | ERR video: Tab key blocked (it would move focus into the player). `response` = key |
 | `video_manual_start_click` | The video didn't start by itself and the participant clicked "Click to start" |
 | `video_end` | Video ended. `details.reason`: `ended_event` (normal end), `fallback_timer` (end signal didn't arrive, ended by timer), `test_mode_cap`, `test_skip` |
 | `video_error`, `youtube_api_load_error`, `warning` | Errors loading or playing the video |
@@ -159,6 +164,8 @@ Written once at the end. `item_id` = field name, `response` = value. These give 
 |---|---|
 | `video_single_id` / `video_multi_id` | Video shown alone / during multitasking (A/B) |
 | `video_single_correct` / `video_multi_correct` | Correct video answers out of 6 |
+| `video_single_answered` / `video_multi_answered` | Questions answered before the 6-minute limit |
+| `video_single_timed_out` / `video_multi_timed_out` | Questions left unanswered when time ran out (counted as wrong) |
 | `math_single_list` / `math_multi_list` | Math list used alone / during multitasking (A/B) |
 | `math_single_attempted` / `math_multi_attempted` | Math problems answered |
 | `math_single_correct` / `math_multi_correct` | Correct answers |

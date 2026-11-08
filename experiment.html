@@ -11,6 +11,7 @@
     --sel: #eaf1f8;
   }
   * { box-sizing: border-box; }
+  [hidden] { display: none !important; }   /* the hidden attribute must win over display: flex etc. */
   html, body { margin: 0; height: 100%; background: var(--bg); color: var(--fg);
     font: 20px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
   body:fullscreen, body:-webkit-full-screen { background: var(--bg); }
@@ -131,83 +132,76 @@ const CONFIG = {
      durationSec: expected length. For youtube/mp4 it is only a fallback if the end event never arrives. */
   videos: {
     A: {
-      type: 'placeholder',
-      url: '',
-      durationSec: 300,
-      label: 'Video A (placeholder)',
-      slides: [
-        { et: 'Valgjärve uurimisjaam rajati 1962. aastal.', en: 'The Lake Valgjärv research station was founded in 1962.' },
-        { et: 'Suvel töötab jaamas kaksteist teadlast.', en: 'Twelve researchers work at the station in summer.' },
-        { et: 'Järv on kõige sügavamas kohas 8 meetrit sügav.', en: 'At its deepest point, the lake is 8 metres deep.' },
-        { et: 'Järve kõige levinum kala on ahven.', en: 'The most common fish in the lake is perch.' },
-        { et: 'Veeproove võetakse igal teisipäeval.', en: 'Water samples are taken every Tuesday.' },
-        { et: 'Jaama paat on värvitud roheliseks.', en: "The station's boat is painted green." },
-      ],
+      type: 'err',
+      url: 'https://jupiter.err.ee/1063647/heureka',   // Jupiter page (jupiter.err.ee/embed/1063647 gives 404)
+      durationSec: 276,          // 4 min 36 s from the start; the player is removed after that
+      label: 'Video A (Jupiter 1063647 Heureka, 0:00–4:36)',
+      /* Show only the player from the Jupiter page: the page is loaded at frameWidth × frameHeight CSS px
+         and only the rectangle x, y, width, height (the player) is shown, scaled to fill the video area.
+         Measured from a screenshot. If the crop is a bit off, adjust x / y; open with ?crop=0 to see the whole page. */
+      crop: { frameWidth: 1778, frameHeight: 1000, x: 643, y: 163, width: 1036, height: 583 },
+      // Questions about the clip (0:00–4:36). correct = index of the right option (0 = first).
       questions: [
         { id: 'A1', difficulty: 'easy',
-          text: { et: 'Mis värvi on jaama paat?', en: "What colour is the station's boat?" },
-          options: [ { et: 'Punane', en: 'Red' }, { et: 'Roheline', en: 'Green' }, { et: 'Sinine', en: 'Blue' }, { et: 'Valge', en: 'White' } ],
-          correct: 1 },
+          text: { et: 'Mitu saasteaine molekuli me igal sissehingamisel tõmbame?', en: 'How many pollutant molecules do we take in with every breath?' },
+          options: [ { et: '3', en: '3' }, { et: '1200', en: '1,200' }, { et: '100 000', en: '100,000' }, { et: '500 000 000', en: '500,000,000' } ],
+          correct: 2 },
         { id: 'A2', difficulty: 'easy',
-          text: { et: 'Milline kala on järves kõige levinum?', en: 'Which fish is most common in the lake?' },
-          options: [ { et: 'Haug', en: 'Pike' }, { et: 'Särg', en: 'Roach' }, { et: 'Ahven', en: 'Perch' }, { et: 'Angerjas', en: 'Eel' } ],
-          correct: 2 },
+          text: { et: 'Mitu protsenti on lämmastiku atmosfääris?', en: 'What percentage of the atmosphere is nitrogen?' },
+          options: [ { et: '21%', en: '21%' }, { et: '1%', en: '1%' }, { et: '90%', en: '90%' }, { et: '78%', en: '78%' } ],
+          correct: 3 },
         { id: 'A3', difficulty: 'intermediate',
-          text: { et: 'Mitu teadlast töötab jaamas suvel?', en: 'How many researchers work at the station in summer?' },
-          options: [ { et: '8', en: '8' }, { et: '10', en: '10' }, { et: '12', en: '12' }, { et: '15', en: '15' } ],
-          correct: 2 },
+          text: { et: 'Mitu minutit puhta hapniku hingamist tekitab meile probleeme?', en: 'After how many minutes does breathing pure oxygen cause us problems?' },
+          options: [ { et: '1 minut', en: '1 minute' }, { et: '15 minutit', en: '15 minutes' }, { et: '50 minutit', en: '50 minutes' }, { et: '5 minutit', en: '5 minutes' } ],
+          correct: 1 },
         { id: 'A4', difficulty: 'intermediate',
-          text: { et: 'Mis päeval võetakse veeproove?', en: 'On which day are water samples taken?' },
-          options: [ { et: 'Esmaspäeval', en: 'Monday' }, { et: 'Teisipäeval', en: 'Tuesday' }, { et: 'Neljapäeval', en: 'Thursday' }, { et: 'Reedel', en: 'Friday' } ],
-          correct: 1 },
+          text: { et: 'Mitu hingetõmmet me ühes minutis keskmiselt teeme?', en: 'How many breaths do we take per minute on average?' },
+          options: [ { et: '10', en: '10' }, { et: '13', en: '13' }, { et: '15', en: '15' }, { et: '20', en: '20' } ],
+          correct: 2 },
         { id: 'A5', difficulty: 'difficult',
-          text: { et: 'Mis aastal jaam rajati?', en: 'In which year was the station founded?' },
-          options: [ { et: '1958', en: '1958' }, { et: '1962', en: '1962' }, { et: '1971', en: '1971' }, { et: '1980', en: '1980' } ],
-          correct: 1 },
+          text: { et: 'Mis värvi parka on saatejuhil seljas?', en: 'What colour parka is the presenter wearing?' },
+          options: [ { et: 'Pruun', en: 'Brown' }, { et: 'Must', en: 'Black' }, { et: 'Roheline', en: 'Green' }, { et: 'Sinine', en: 'Blue' } ],
+          correct: 2 },
         { id: 'A6', difficulty: 'difficult',
-          text: { et: 'Kui sügav on järv kõige sügavamas kohas?', en: 'How deep is the lake at its deepest point?' },
-          options: [ { et: '5 m', en: '5 m' }, { et: '8 m', en: '8 m' }, { et: '11 m', en: '11 m' }, { et: '14 m', en: '14 m' } ],
+          text: { et: 'Mis seemet kasutati suuruste võrdluses?', en: 'Which seed was used in the size comparison?' },
+          options: [ { et: 'Seedermänniseemet', en: 'Siberian pine seed' }, { et: 'Seesamiseemet', en: 'Sesame seed' }, { et: 'Chia seemet', en: 'Chia seed' }, { et: 'Linaseemet', en: 'Flax seed' } ],
           correct: 1 },
       ],
     },
     B: {
-      type: 'placeholder',
-      url: '',
-      durationSec: 300,
-      label: 'Video B (placeholder)',
-      slides: [
-        { et: 'Sadama pagariäri avatakse kell 6 hommikul.', en: 'The harbour bakery opens at 6 in the morning.' },
-        { et: 'Pagariäri kõige populaarsem toode on rukkileib.', en: "The bakery's best-selling product is rye bread." },
-        { et: 'Jahu tuleb veskist, mis asub 40 km kaugusel.', en: 'The flour comes from a mill 40 km away.' },
-        { et: 'Hommikuvahetuses töötab neli pagarit.', en: 'Four bakers work the morning shift.' },
-        { et: 'Laupäeviti küpsetatakse kaneelisaiu.', en: 'On Saturdays they bake cinnamon buns.' },
-        { et: 'Pagariäri ahi ehitati 1994. aastal.', en: "The bakery's oven was built in 1994." },
-      ],
+      type: 'err',
+      url: 'https://jupiter.err.ee/1069215/heureka',   // Heureka 2. hooaeg 2. osa: "Kuidas kasutatakse päikeseenergiat?"
+      durationSec: 276,          // 4 min 36 s from the start, same as video A; the player is removed after that
+      label: 'Video B (Jupiter 1069215 Heureka, 0:00–4:36)',
+      // Same Jupiter page layout as video A, so the same crop (only the player is shown).
+      crop: { frameWidth: 1778, frameHeight: 1000, x: 643, y: 163, width: 1036, height: 583 },
+      // Questions about the clip (0:00–4:36). correct = index of the right option (0 = first).
+      // Difficulty was not given; set to the same pattern as video A (2 easy, 2 intermediate, 2 difficult).
       questions: [
         { id: 'B1', difficulty: 'easy',
-          text: { et: 'Mis on pagariäri kõige populaarsem toode?', en: "What is the bakery's best-selling product?" },
-          options: [ { et: 'Sai', en: 'White bread' }, { et: 'Rukkileib', en: 'Rye bread' }, { et: 'Kook', en: 'Cake' }, { et: 'Pirukad', en: 'Pies' } ],
-          correct: 1 },
+          text: { et: 'Mis marju Laastu talus kasvatati?', en: 'What berries were grown on Laastu farm?' },
+          options: [ { et: 'Vaarikaid', en: 'Raspberries' }, { et: 'Mustikaid', en: 'Blueberries' }, { et: 'Maasikaid', en: 'Strawberries' }, { et: 'Mustsõstraid', en: 'Blackcurrants' } ],
+          correct: 2 },
         { id: 'B2', difficulty: 'easy',
-          text: { et: 'Mida küpsetatakse laupäeviti?', en: 'What do they bake on Saturdays?' },
-          options: [ { et: 'Kaneelisaiu', en: 'Cinnamon buns' }, { et: 'Kringlit', en: 'Kringle' }, { et: 'Küpsiseid', en: 'Cookies' }, { et: 'Pirukaid', en: 'Pies' } ],
-          correct: 0 },
+          text: { et: 'Mitme kraadi juures liituvad vesiniku aatomid?', en: 'At what temperature do hydrogen atoms fuse?' },
+          options: [ { et: '10 000 000 kelvinit', en: '10,000,000 kelvin' }, { et: '2 000 000 kelvinit', en: '2,000,000 kelvin' }, { et: '1 500 000 kelvinit', en: '1,500,000 kelvin' }, { et: '17 000 000 kelvinit', en: '17,000,000 kelvin' } ],
+          correct: 3 },
         { id: 'B3', difficulty: 'intermediate',
-          text: { et: 'Mis kell pagariäri avatakse?', en: 'What time does the bakery open?' },
-          options: [ { et: 'Kell 5', en: '5 am' }, { et: 'Kell 6', en: '6 am' }, { et: 'Kell 7', en: '7 am' }, { et: 'Kell 8', en: '8 am' } ],
+          text: { et: 'Mitu korda rohkem energiat saame teoorias päikesest kätte, kui inimkond vajab?', en: 'In theory, how many times more energy do we get from the sun than humankind needs?' },
+          options: [ { et: '10 000 korda', en: '10,000 times' }, { et: '15 000 korda', en: '15,000 times' }, { et: '20 000 korda', en: '20,000 times' }, { et: '30 000 korda', en: '30,000 times' } ],
           correct: 1 },
         { id: 'B4', difficulty: 'intermediate',
-          text: { et: 'Mitu pagarit töötab hommikuvahetuses?', en: 'How many bakers work the morning shift?' },
-          options: [ { et: '2', en: '2' }, { et: '3', en: '3' }, { et: '4', en: '4' }, { et: '6', en: '6' } ],
-          correct: 2 },
+          text: { et: 'Mis aastaajal on päikesekiired ekvaatori suhtes 90-kraadise nurga all?', en: 'In which season do the sun\'s rays hit the equator at a 90-degree angle?' },
+          options: [ { et: 'Kevadel', en: 'Spring' }, { et: 'Sügisel', en: 'Autumn' }, { et: 'Talvel', en: 'Winter' }, { et: 'Suvel', en: 'Summer' } ],
+          correct: 0 },
         { id: 'B5', difficulty: 'difficult',
-          text: { et: 'Kui kaugel asub veski, kust jahu tuleb?', en: 'How far away is the mill the flour comes from?' },
-          options: [ { et: '15 km', en: '15 km' }, { et: '25 km', en: '25 km' }, { et: '40 km', en: '40 km' }, { et: '60 km', en: '60 km' } ],
+          text: { et: 'Mitu päikesepaneeli on Laastu talu päikeseelektrijaamas?', en: 'How many solar panels are there in Laastu farm\'s solar power plant?' },
+          options: [ { et: '100 paneeli', en: '100 panels' }, { et: '340 paneeli', en: '340 panels' }, { et: '668 paneeli', en: '668 panels' }, { et: '1002 paneeli', en: '1,002 panels' } ],
           correct: 2 },
         { id: 'B6', difficulty: 'difficult',
-          text: { et: 'Mis aastal ahi ehitati?', en: 'In which year was the oven built?' },
-          options: [ { et: '1989', en: '1989' }, { et: '1994', en: '1994' }, { et: '1999', en: '1999' }, { et: '2004', en: '2004' } ],
-          correct: 1 },
+          text: { et: 'Kus asuvad suurimad päikeseelektrijaamad?', en: 'Where are the largest solar power plants?' },
+          options: [ { et: 'USA-s', en: 'In the USA' }, { et: 'Mehhikos', en: 'In Mexico' }, { et: 'Brasiilias', en: 'In Brazil' }, { et: 'Etioopias', en: 'In Ethiopia' } ],
+          correct: 0 },
       ],
     },
     /* Examples:
@@ -220,32 +214,53 @@ const CONFIG = {
     allowPause: false,        // false: clicks on the player are blocked (YouTube/mp4) and pauses are auto-resumed
     endGraceSec: 15,          // youtube/mp4: fallback ends the video this long after the expected end
     errEndBufferSec: 3,       // err: added to durationSec (no ended event available)
-    errBlockClicks: false,    // err: block clicks on the player (only if ERR autoplays for you)
+    errLockPlayer: true,      // err: before play only the middle of the player (the big ▶) is clickable; after the
+                              //      play click the whole player is covered and keyboard focus is taken out of it,
+                              //      so the participant cannot pause, seek, change volume or open menus.
+    errPlayHole: { w: 0.16, h: 0.26 },  // clickable area before play, as a fraction of the player width / height (centred)
+    errLockDelayMs: 400,      // wait after the play click before covering the player (lets the click finish)
+    errStartOn: 'click',      // err: 'click' = the timer starts when the participant clicks into the player (play);
+                              //      'load'  = the timer starts as soon as the player is shown (use if ERR autoplays)
+    errNoClickTimeoutSec: 30, // err/'click': if no click is detected by then, the timer starts anyway (logged)
     startCheckMs: 2500,       // if playback hasn't started by then, show a "click to start" button
   },
 
   math: {
     singleDurationSec: 300,   // Phase 3 fixed duration. Phase 4 math runs until the video ends.
     allowNegativeResults: false,
-    /* Fixed problem lists: every participant gets the same problems in the same order.
-       'single' = Phase 3 (math alone), 'multi' = Phase 4 (math during video).
-       Lists are matched: same order of + / −, 13 with carry/borrow and 12 without per operation.
+    /* Fixed problem lists A and B: problems are always shown in the same order.
+       Each participant gets one list in Phase 3 (math alone) and the other in Phase 4 (math during video).
+       Which list comes in Phase 3 is random (50/50), or set with ?math=A / ?math=B in the URL.
+       The video order is assigned separately (?condition=1 / 2), so the two are fully crossed.
+       Each problem has 3 numbers and uses only + and − (the parser also accepts × ÷ and any count ≥ 2).
+       Lists are matched: same order of problem types (13 '+ +', 13 '+ −', 12 '− +', 12 '− −'),
+       every intermediate and final result is ≥ 5.
        If a participant reaches the end of a list, it starts again from the first problem.
        Set fixedProblems: null to use random problems from `operations` instead. */
     fixedProblems: {
-      single: [
-        '93 + 96', '52 - 26', '97 + 82', '91 - 14', '19 + 39', '48 - 24', '45 - 13', '71 + 82', '27 + 67', '75 - 49',
-        '46 - 17', '87 + 71', '89 - 47', '78 + 55', '25 + 92', '85 - 18', '79 - 14', '71 + 39', '79 - 53', '39 - 14',
-        '18 + 95', '57 + 25', '61 - 21', '37 - 26', '95 + 22', '48 - 26', '71 - 16', '58 + 82', '99 - 26', '33 + 22',
-        '92 - 16', '96 + 24', '94 - 36', '95 + 31', '73 - 54', '62 + 31', '52 + 62', '87 - 19', '78 + 49', '32 + 88',
-        '91 - 22', '31 - 21', '28 + 92', '35 + 13', '82 - 12', '66 + 79', '87 - 48', '69 + 91', '41 + 77', '44 - 18',
+      A: [
+        '41 − 27 + 8', '65 − 36 − 5', '36 + 16 + 18', '33 + 25 − 11', '78 − 27 − 8',
+        '39 + 29 + 18', '77 − 11 + 12', '65 + 35 − 12', '61 + 18 + 5', '32 + 37 − 2',
+        '31 + 11 + 2', '45 − 17 + 18', '71 + 37 − 9', '66 − 34 − 15', '67 − 25 + 6',
+        '27 + 38 + 15', '76 − 38 + 4', '61 − 36 − 11', '54 − 12 + 3', '38 + 31 − 11',
+        '36 + 11 + 14', '53 − 28 − 17', '31 − 14 + 2', '75 − 19 − 6', '66 + 34 + 6',
+        '62 + 38 − 15', '53 − 26 + 5', '62 + 39 − 9', '47 − 15 − 17', '66 + 34 − 3',
+        '59 + 15 + 6', '61 − 27 − 5', '52 − 26 + 14', '32 + 33 − 17', '49 + 19 + 3',
+        '41 + 11 − 2', '49 − 14 − 9', '67 + 18 − 13', '63 − 24 + 13', '33 + 38 + 11',
+        '64 + 15 − 6', '73 − 28 − 19', '32 + 32 − 15', '67 − 36 − 16', '23 + 17 + 16',
+        '78 − 21 + 16', '45 + 18 + 4', '38 − 18 − 9', '59 − 36 + 19', '75 + 34 + 7'
       ],
-      multi: [
-        '96 + 23', '84 - 59', '32 + 37', '83 - 19', '69 + 72', '95 - 44', '92 - 71', '65 + 93', '47 + 66', '82 - 37',
-        '72 - 45', '77 + 32', '95 - 21', '23 + 27', '98 + 71', '67 - 28', '47 - 21', '95 + 48', '54 - 44', '39 - 26',
-        '99 + 52', '97 + 28', '82 - 11', '78 - 55', '82 + 21', '79 - 63', '83 - 66', '58 + 39', '79 - 29', '21 + 31',
-        '75 - 26', '86 + 25', '84 - 69', '74 + 84', '72 - 33', '66 + 52', '92 + 54', '82 - 45', '54 + 16', '39 + 49',
-        '51 - 24', '89 - 72', '88 + 92', '85 + 82', '95 - 74', '78 + 13', '91 - 69', '25 + 39', '71 + 54', '93 - 59',
+      B: [
+        '59 − 28 + 18', '74 − 18 − 13', '26 + 17 + 5', '48 + 29 − 5', '79 − 32 − 2',
+        '27 + 27 + 12', '49 − 11 + 19', '54 + 27 − 15', '41 + 24 + 8', '68 + 33 − 4',
+        '59 + 27 + 7', '76 − 17 + 8', '74 + 14 − 12', '68 − 27 − 17', '75 − 26 + 17',
+        '31 + 18 + 12', '56 − 36 + 17', '57 − 28 − 2', '36 − 19 + 3', '73 + 27 − 5',
+        '56 + 32 + 16', '55 − 33 − 4', '33 − 13 + 6', '67 − 21 − 2', '36 + 11 + 12',
+        '47 + 22 − 14', '43 − 36 + 17', '36 + 36 − 13', '68 − 33 − 14', '39 + 14 − 3',
+        '75 + 32 + 7', '56 − 19 − 6', '74 − 21 + 19', '65 + 26 − 11', '67 + 29 + 17',
+        '54 + 15 − 19', '75 − 24 − 12', '67 + 29 − 6', '79 − 34 + 16', '24 + 24 + 13',
+        '64 + 25 − 9', '55 − 11 − 18', '23 + 13 − 16', '43 − 12 − 17', '69 + 34 + 16',
+        '79 − 29 + 3', '49 + 12 + 17', '76 − 23 − 3', '42 − 22 + 8', '49 + 15 + 15'
       ],
     },
     // Random mode only (fixedProblems: null). Each operation is picked with probability proportional to weight.
@@ -261,8 +276,16 @@ const CONFIG = {
   // (videos only; the Phase 3 math always runs for math.singleDurationSec — use the Skip button to cut it short)
   testMode: { videoSec: 20 },
 
-  // Countdown shown top-left (next to the phase label) during video and math (remaining time of the current task).
-  timer: { show: true },
+  // Countdown shown top-left (next to the phase label): remaining time of the current task.
+  questions: {
+    timeLimitSec: 360,       // time for all 6 questions about one video (from "Start questions"); 0 = no limit.
+                             // When time runs out, the remaining questions count as unanswered (wrong).
+  },
+
+  timer: {
+    show: true,              // master switch for the countdown (also shown during the video questions)
+    showDuringVideo: false,  // countdown while a video plays (Phase 2 and Phase 4); false = hidden
+  },
 
   // Skip button (bottom-right) on every screen, for testing only.
   // Shown when skipButton is true, or with ?test=1 or ?fast=1 in the URL.
@@ -296,9 +319,11 @@ const CONFIG = {
       video_intro_text: '<p>Järgmisena näete umbes 5-minutilist videot. Vaadake see tähelepanelikult lõpuni – pärast videot vastate selle sisu kohta kuuele küsimusele.</p><p>Videot ei saa peatada ega kerida. Kui video lõpeb, avanevad küsimused automaatselt.</p>',
       start_video_btn: 'Alusta videoga',
       video_click_start: 'Klõpsake video alustamiseks',
-      err_hint: 'Kui video ei käivitu ise, vajutage mängijas esitusnuppu.',
+      err_hint: 'Vajutage mängijas esitusnuppu ▶. Video lõpeb automaatselt.',
       questions_intro_title: 'Küsimused video kohta',
-      questions_intro_text: '<p>Video on lõppenud. Vastake nüüd kuuele küsimusele video sisu kohta. Igal küsimusel on üks õige vastus.</p>',
+      questions_intro_text: '<p>Video on lõppenud. Vastake nüüd kuuele küsimusele video sisu kohta. Igal küsimusel on üks õige vastus.</p><p><b>Vastake ainult video põhjal, mitte oma teadmiste põhjal.</b></p><p>Vastamiseks on aega kokku <b>{min} minutit</b>. Järelejäänud aega näete üleval vasakul.</p>',
+      questions_timeout_title: 'Aeg on läbi',
+      questions_timeout_text: '<p>Küsimustele vastamise aeg sai läbi. Vastamata küsimusi ei arvestata.</p>',
       start_questions_btn: 'Alusta küsimustega',
       q_label: 'Küsimus {i} / {n}',
       math_intro_title: 'Arvutamine',
@@ -355,9 +380,11 @@ const CONFIG = {
       video_intro_text: '<p>Next you will watch a video of about 5 minutes. Watch it carefully to the end. Afterwards you will answer six questions about its content.</p><p>The video cannot be paused or skipped. When it ends, the questions open automatically.</p>',
       start_video_btn: 'Start video',
       video_click_start: 'Click to start the video',
-      err_hint: "If the video doesn't start on its own, press play in the player.",
+      err_hint: 'Press the play button ▶ in the player. The video ends automatically.',
       questions_intro_title: 'Questions about the video',
-      questions_intro_text: '<p>The video has ended. Now answer six questions about its content. Each question has one correct answer.</p>',
+      questions_intro_text: '<p>The video has ended. Now answer six questions about its content. Each question has one correct answer.</p><p><b>Answer based only on the video, not on your own knowledge.</b></p><p>You have <b>{min} minutes</b> in total. The remaining time is shown at the top left.</p>',
+      questions_timeout_title: 'Time is up',
+      questions_timeout_text: '<p>The time for answering the questions has run out. Unanswered questions are not counted.</p>',
       start_questions_btn: 'Start questions',
       q_label: 'Question {i} of {n}',
       math_intro_title: 'Arithmetic',
@@ -430,8 +457,12 @@ const S = {
 };
 S.videoSingle = S.condition === 1 ? 'A' : 'B';
 S.videoMulti  = S.condition === 1 ? 'B' : 'A';
+const forcedMath = (URLP.get('math') || '').toUpperCase();
+S.mathSource = (forcedMath === 'A' || forcedMath === 'B') ? 'url' : 'random';
+S.mathSingle = S.mathSource === 'url' ? forcedMath : (randInt(1, 2) === 1 ? 'A' : 'B');
+S.mathMulti  = S.mathSingle === 'A' ? 'B' : 'A';
 
-const COLS = ['participant_id', 'condition', 'language', 'event_index', 'timestamp_ms', 'iso_time', 't_ms',
+const COLS = ['participant_id', 'condition', 'math_single_list', 'language', 'event_index', 'timestamp_ms', 'iso_time', 't_ms',
   'phase', 'event_type', 'task_condition', 'video', 'item_index', 'item_id', 'difficulty', 'stimulus',
   'correct_answer', 'response', 'response_index', 'correct', 'rt_ms', 'details'];
 
@@ -440,7 +471,7 @@ function log(type, f = {}) {
   const ev = {};
   COLS.forEach(c => ev[c] = '');
   Object.assign(ev, {
-    participant_id: S.pid, condition: S.condition, language: S.lang, event_index: S.events.length,
+    participant_id: S.pid, condition: S.condition, math_single_list: S.mathSingle, language: S.lang, event_index: S.events.length,
     timestamp_ms: now, iso_time: new Date(now).toISOString(), t_ms: Math.round(performance.now() - S.t0),
     phase: S.phase, event_type: type,
   }, f);
@@ -497,9 +528,9 @@ function setSkip(name, fn) {
   $skip.hidden = !(SKIP_ON && fn);
 }
 
-function render(html, full = false) {
+function render(html, full = false, keepTimer = false) {
   setSkip(null, null);
-  Timer.stop();
+  if (!keepTimer) Timer.stop();
   $app.classList.toggle('full', full);
   $app.innerHTML = html;
   window.scrollTo(0, 0);
@@ -608,7 +639,7 @@ function youtubeId(url) {
 function mountVideo(host, key, taskCondition, onEnd) {
   const v = CONFIG.videos[key];
   const VC = CONFIG.video;
-  let ended = false, fallbackT = null, capT = null, ticker = null, startCheckT = null, ytPlayer = null;
+  let ended = false, fallbackT = null, capT = null, ticker = null, startCheckT = null, ytPlayer = null, errCleanup = null, cropRO = null;
   const base = { video: key, task_condition: taskCondition };
 
   host.innerHTML = `<div class="vwrap" style="width:100%"><div class="vstage">
@@ -621,12 +652,15 @@ function mountVideo(host, key, taskCondition, onEnd) {
 
   const mountedAt = performance.now();
   const vTimer = sec => {   // show remaining video time (respecting test-mode cap)
+    if (!CONFIG.timer.showDuringVideo) return;
     if (FAST) sec = Math.min(sec, CONFIG.testMode.videoSec - (performance.now() - mountedAt) / 1000);
     Timer.start(sec);
   };
   function cleanup() {
     Timer.stop();
     clearTimeout(fallbackT); clearTimeout(capT); clearTimeout(startCheckT); clearInterval(ticker);
+    if (errCleanup) errCleanup();
+    if (cropRO) cropRO.disconnect();
     try { if (ytPlayer && ytPlayer.destroy) ytPlayer.destroy(); } catch (e) { /* ignore */ }
     const media = inner.querySelector('video'); if (media) { media.pause(); media.removeAttribute('src'); media.load(); }
     const fr = inner.querySelector('iframe'); if (fr) fr.src = 'about:blank';
@@ -705,10 +739,69 @@ function mountVideo(host, key, taskCondition, onEnd) {
     fr.allow = 'autoplay; fullscreen; encrypted-media';
     fr.setAttribute('allowfullscreen', '');
     inner.appendChild(fr);
-    if (!VC.errBlockClicks) shield.classList.add('passthrough');
+    const c = v.crop;
+    if (c && URLP.get('crop') !== '0') {
+      // Load the page at a fixed size (so its layout is always the same) and show only the player rectangle.
+      inner.style.overflow = 'hidden';
+      Object.assign(fr.style, { inset: 'auto', left: '0', top: '0', width: c.frameWidth + 'px', height: c.frameHeight + 'px',
+        transformOrigin: '0 0' });
+      const fit = () => {
+        const sc = Math.min(inner.clientWidth / c.width, inner.clientHeight / c.height);
+        const ox = (inner.clientWidth - c.width * sc) / 2, oy = (inner.clientHeight - c.height * sc) / 2;
+        fr.style.transform = `translate(${ox}px, ${oy}px) scale(${sc}) translate(${-c.x}px, ${-c.y}px)`;
+      };
+      fit();
+      cropRO = new ResizeObserver(fit); cropRO.observe(inner);
+    }
+    const lock = VC.errLockPlayer;
+    if (lock) {
+      // Transparent cover over the player with a hole in the middle, so only the big ▶ button can be clicked.
+      const hw = VC.errPlayHole.w * 50, hh = VC.errPlayHole.h * 50;
+      const l = 50 - hw, r = 50 + hw, tp = 50 - hh, b = 50 + hh;
+      shield.style.clipPath = `polygon(evenodd, 0% 0%, 100% 0%, 100% 100%, 0% 100%, 0% 0%, ` +
+        `${l}% ${tp}%, ${r}% ${tp}%, ${r}% ${b}%, ${l}% ${b}%, ${l}% ${tp}%)`;
+      fr.tabIndex = -1;
+    } else shield.classList.add('passthrough');
+    // Somewhere outside the player to put keyboard focus (the math input in Phase 4, otherwise this element).
+    const parking = document.createElement('div'); parking.tabIndex = -1; parking.style.outline = 'none';
+    host.appendChild(parking);
+    const park = () => {
+      if (document.activeElement !== fr) return;
+      const mathInp = document.querySelector('.math input:not([disabled])');
+      (mathInp || parking).focus({ preventScroll: true });
+    };
+    const blockTab = e => { if (e.key === 'Tab') { e.preventDefault(); log('video_key_blocked', { ...base, response: 'Tab' }); } };
+    if (lock) window.addEventListener('keydown', blockTab, true);
     note.textContent = t('err_hint'); note.hidden = false;
-    setFallback(v.durationSec + VC.errEndBufferSec);
-    vTimer(v.durationSec + VC.errEndBufferSec);
+    // ERR gives no play/ended events, so the clip is cut by a timer of durationSec + errEndBufferSec.
+    // In 'click' mode the timer starts when focus moves into the player iframe (= the participant clicked play).
+    const playSec = v.durationSec + VC.errEndBufferSec;
+    let clockOn = false, noClickT = null;
+    // Focus moving into the player iframe = the participant clicked it.
+    const onBlur = () => setTimeout(() => {
+      if (document.activeElement !== fr || ended) return;
+      if (!clockOn) startClock('player_click');
+      else log('video_player_focus', { ...base, details: { note: 'focus moved into the player again; taken back' } });
+      setTimeout(() => {
+        if (lock && !ended) shield.style.clipPath = 'none';   // cover the whole player from now on
+        park();
+      }, VC.errLockDelayMs);
+    }, 0);
+    const startClock = how => {
+      if (clockOn || ended) return;
+      clockOn = true;
+      clearTimeout(noClickT);
+      log('video_state', { ...base, response: 'play_assumed',
+        details: { trigger: how, wait_ms: Math.round(performance.now() - mountedAt), cut_after_sec: playSec } });
+      note.hidden = true;
+      setFallback(playSec); vTimer(playSec);
+    };
+    errCleanup = () => { window.removeEventListener('blur', onBlur); window.removeEventListener('keydown', blockTab, true);
+      clearTimeout(noClickT); };
+    window.addEventListener('blur', onBlur);   // also catches later attempts to focus the player
+    if (VC.errStartOn === 'click') {
+      noClickT = setTimeout(() => startClock('no_click_timeout'), VC.errNoClickTimeoutSec * 1000);
+    } else startClock('load');
   } else if (v.type === 'mp4') {
     const media = document.createElement('video');
     media.src = v.url; media.playsInline = true; media.preload = 'auto';
@@ -768,15 +861,23 @@ function genEquation() {
 
 /** Renders the math task into `host`. */
 function parseEquation(str) {
-  const m = String(str).trim().match(/^(\d+)\s*([-+−×*÷/])\s*(\d+)$/);
-  if (!m) throw new Error('Bad math problem in CONFIG.math.fixedProblems: ' + str);
-  const a = Number(m[1]), b = Number(m[3]);
-  switch (m[2]) {
-    case '+': return { text: `${a} + ${b}`, answer: a + b };
-    case '-': case '−': return { text: `${a} − ${b}`, answer: a - b };
-    case '×': case '*': return { text: `${a} × ${b}`, answer: a * b };
-    default:  return { text: `${a} ÷ ${b}`, answer: a / b };
-  }
+  const tokens = String(str).trim().split(/\s*([-+−×*÷/])\s*/);
+  const nums = tokens.filter((_, i) => i % 2 === 0).map(Number);
+  const ops = tokens.filter((_, i) => i % 2 === 1).map(o => ({ '-': '−', '*': '×', '/': '÷' }[o] || o));
+  if (nums.length < 2 || nums.some(n => !Number.isInteger(n) || n < 0))
+    throw new Error('Bad math problem in CONFIG.math.fixedProblems: ' + str);
+  // × and ÷ first, then + and − left to right
+  const terms = [nums[0]], addOps = [];
+  ops.forEach((o, i) => {
+    const n = nums[i + 1];
+    if (o === '×') terms[terms.length - 1] *= n;
+    else if (o === '÷') terms[terms.length - 1] /= n;
+    else { addOps.push(o); terms.push(n); }
+  });
+  let answer = terms[0];
+  addOps.forEach((o, i) => { answer = o === '+' ? answer + terms[i + 1] : answer - terms[i + 1]; });
+  if (!Number.isInteger(answer)) throw new Error('Non-integer answer in CONFIG.math.fixedProblems: ' + str);
+  return { text: nums.map((n, i) => i ? `${ops[i - 1]} ${n}` : String(n)).join(' '), answer };
 }
 
 function MathTask(host, taskCondition) {
@@ -788,9 +889,11 @@ function MathTask(host, taskCondition) {
   const stats = { attempted: 0, correct: 0, wrong: 0, rt_sum: 0 };
   let cur = null, shownAt = 0, running = false, prev = '', focusT = null;
 
-  const fixed = CONFIG.math.fixedProblems && CONFIG.math.fixedProblems[taskCondition];
+  const listKey = taskCondition === 'single' ? S.mathSingle : S.mathMulti;
+  const fixed = CONFIG.math.fixedProblems && CONFIG.math.fixedProblems[listKey];
   const list = fixed ? fixed.map(parseEquation) : null;
   let listPos = 0;
+  const itemId = () => list ? `${listKey}${(listPos - 1) % list.length + 1}` : '';   // e.g. A12 = list A, problem 12
 
   function next() {
     let e, guard = 0;
@@ -798,6 +901,7 @@ function MathTask(host, taskCondition) {
       if (listPos > 0 && listPos % list.length === 0)
         log('math_list_restart', { task_condition: taskCondition, details: { round: listPos / list.length + 1 } });
       e = list[listPos % list.length]; listPos++;
+      e.id = itemId();
     } else {
       do { e = genEquation(); } while (e.text === prev && guard++ < 20);
     }
@@ -820,11 +924,13 @@ function MathTask(host, taskCondition) {
     const resp = parseInt(raw, 10);
     const ok = resp === cur.answer;
     stats.attempted++; ok ? stats.correct++ : stats.wrong++; stats.rt_sum += rt;
-    log('math_answer', { task_condition: taskCondition, item_index: stats.attempted, stimulus: cur.text,
+    log('math_answer', { task_condition: taskCondition, item_index: stats.attempted, item_id: cur.id || '', stimulus: cur.text,
       correct_answer: cur.answer, response: resp, correct: ok ? 1 : 0, rt_ms: rt });
     next();
   });
-  const keepFocus = () => { if (running && !S.modal && document.activeElement !== inp) inp.focus({ preventScroll: true }); };
+  // Don't pull focus out of an iframe here: the video code does that itself after the play click has gone through.
+  const keepFocus = () => { if (running && !S.modal && document.activeElement !== inp &&
+    document.activeElement?.tagName !== 'IFRAME') inp.focus({ preventScroll: true }); };
   inp.addEventListener('blur', () => setTimeout(keepFocus, 0));
 
   return {
@@ -833,13 +939,13 @@ function MathTask(host, taskCondition) {
       running = true; next(); inp.focus();
       focusT = setInterval(keepFocus, 250);
       S.onModalClose = keepFocus;
-      log('task_start', { task_condition: taskCondition, details: { task: 'math' } });
+      log('task_start', { task_condition: taskCondition, details: { task: 'math', list: list ? listKey : 'random' } });
     },
     stop(reason) {
       if (!running) return stats;
       running = false; clearInterval(focusT); S.onModalClose = null;
       inp.disabled = true;
-      if (cur) log('math_unanswered', { task_condition: taskCondition, item_index: stats.attempted + 1,
+      if (cur) log('math_unanswered', { task_condition: taskCondition, item_index: stats.attempted + 1, item_id: cur.id || '',
         stimulus: cur.text, correct_answer: cur.answer, response: inp.value,
         rt_ms: Math.round(performance.now() - shownAt) });
       log('task_end', { task_condition: taskCondition, details: { task: 'math', reason, ...stats } });
@@ -853,17 +959,50 @@ function MathTask(host, taskCondition) {
    ===================================================================== */
 function runQuestions(key, taskCondition, done) {
   const qs = CONFIG.videos[key].questions;
-  const score = { correct: 0, n: qs.length };
-  render(`<div class="card"><h1>${esc(t('questions_intro_title'))}</h1>${t('questions_intro_text')}
+  const score = { correct: 0, answered: 0, timed_out: 0, n: qs.length };
+  const limitSec = CONFIG.questions?.timeLimitSec || 0;
+  let current = 0, finished = false, limitT = null;
+  render(`<div class="card"><h1>${esc(t('questions_intro_title'))}</h1>${t('questions_intro_text', { min: Math.round(limitSec / 60 * 10) / 10 })}
     <div class="actions"><button id="go">${esc(t('start_questions_btn'))}</button></div></div>`);
   log('screen', { video: key, task_condition: taskCondition, details: { screen: 'questions_intro' } });
-  document.getElementById('go').onclick = () => show(0);
-  setSkip('questions_intro', () => show(0));
+  const begin = () => {
+    if (limitSec > 0) {
+      Timer.start(limitSec);
+      limitT = setTimeout(timeUp, limitSec * 1000);
+      log('questions_start', { video: key, task_condition: taskCondition, details: { time_limit_sec: limitSec } });
+    }
+    show(0);
+  };
+  document.getElementById('go').onclick = begin;
+  setSkip('questions_intro', begin);
+
+  function finish(reason) {
+    if (finished) return;
+    finished = true;
+    clearTimeout(limitT); Timer.stop();
+    S.stats[`video_${taskCondition}`] = { video: key, ...score };
+    log('questions_end', { video: key, task_condition: taskCondition, details: { ...score, reason } });
+  }
+  function timeUp() {
+    if (finished) return;
+    for (let k = current; k < qs.length; k++) {
+      const q = qs[k];
+      log('question_timeout', { video: key, task_condition: taskCondition, item_index: k + 1, item_id: q.id,
+        difficulty: q.difficulty, stimulus: L(q.text), correct_answer: L(q.options[q.correct]), correct: 0 });
+      score.timed_out++;
+    }
+    finish('time_limit');
+    render(`<div class="card"><h1>${esc(t('questions_timeout_title'))}</h1>${t('questions_timeout_text')}
+      <div class="actions"><button id="go">${esc(t('continue_btn'))}</button></div></div>`);
+    document.getElementById('go').onclick = () => done();
+    setSkip('questions_timeout', () => done());
+  }
 
   function show(i) {
+    if (finished) return;
+    current = i;
     if (i >= qs.length) {
-      S.stats[`video_${taskCondition}`] = { video: key, ...score };
-      log('questions_end', { video: key, task_condition: taskCondition, details: score });
+      finish('all_answered');
       return done();
     }
     const q = qs[i];
@@ -871,7 +1010,7 @@ function runQuestions(key, taskCondition, done) {
       <div class="q-text">${esc(L(q.text))}</div>
       <div role="radiogroup">${q.options.map((o, j) => `
         <label class="opt"><input type="radio" name="q" value="${j}"><span>${esc(L(o))}</span></label>`).join('')}</div>
-      <div class="actions"><button id="next" disabled>${esc(t('continue_btn'))}</button></div></div>`);
+      <div class="actions"><button id="next" disabled>${esc(t('continue_btn'))}</button></div></div>`, false, true);
     const shownAt = performance.now();
     log('question_shown', { video: key, task_condition: taskCondition, item_index: i + 1, item_id: q.id, difficulty: q.difficulty });
     const btn = document.getElementById('next');
@@ -890,7 +1029,9 @@ function runQuestions(key, taskCondition, done) {
       const sel = $app.querySelector('input[name=q]:checked');
       if (!sel) return;
       const j = Number(sel.value), ok = j === q.correct;
+      if (finished) return;
       if (ok) score.correct++;
+      score.answered++;
       log('question_answer', { video: key, task_condition: taskCondition, item_index: i + 1, item_id: q.id,
         difficulty: q.difficulty, stimulus: L(q.text), correct_answer: L(q.options[q.correct]),
         response: L(q.options[j]), response_index: j, correct: ok ? 1 : 0,
@@ -1071,6 +1212,9 @@ function showEnd() {
   const summary = {
     video_single_id: S.videoSingle, video_single_correct: s.video_single?.correct ?? '',
     video_multi_id: S.videoMulti,   video_multi_correct: s.video_multi?.correct ?? '',
+    video_single_answered: s.video_single?.answered ?? '', video_multi_answered: s.video_multi?.answered ?? '',
+    video_single_timed_out: s.video_single?.timed_out ?? '', video_multi_timed_out: s.video_multi?.timed_out ?? '',
+    math_single_list: S.mathSingle, math_multi_list: S.mathMulti,
     math_single_attempted: s.math_single?.attempted ?? '', math_single_correct: s.math_single?.correct ?? '',
     math_single_wrong: s.math_single?.wrong ?? '', math_single_mean_rt_ms: s.math_single?.mean_rt_ms ?? '',
     math_multi_attempted: s.math_multi?.attempted ?? '', math_multi_correct: s.math_multi?.correct ?? '',
@@ -1102,7 +1246,7 @@ function showEnd() {
     ${resultsHtml}
     <h2>${esc(t('debrief_title'))}</h2>${t('debrief_text')}
     <h2>${esc(t('researcher_title'))}</h2>
-    <p class="muted">ID: <b>${esc(S.pid)}</b> · condition ${S.condition} (${S.conditionSource})${FAST ? ' · TEST MODE' : ''} · ${S.events.length} events</p>
+    <p class="muted">ID: <b>${esc(S.pid)}</b> · condition ${S.condition} (${S.conditionSource}) · math ${S.mathSingle} alone / ${S.mathMulti} multi (${S.mathSource})${FAST ? ' · TEST MODE' : ''} · ${S.events.length} events</p>
     <div class="actions"><button id="csv">${esc(t('download_csv'))}</button></div></div>`);
   const stamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-');
   document.getElementById('csv').onclick = () => download(`multitask_${S.pid}_${stamp}.csv`, exportCSV(), 'text/csv;charset=utf-8');
@@ -1122,7 +1266,8 @@ function exportCSV() {
 function exportJSON() {
   return {
     participant_id: S.pid, condition: S.condition, condition_source: S.conditionSource, language: S.lang,
-    video_single: S.videoSingle, video_multi: S.videoMulti, fast_mode: FAST,
+    video_single: S.videoSingle, video_multi: S.videoMulti,
+    math_single_list: S.mathSingle, math_multi_list: S.mathMulti, math_source: S.mathSource, fast_mode: FAST,
     started_at: S.startedAt, user_agent: navigator.userAgent,
     screen: { width: screen.width, height: screen.height, dpr: window.devicePixelRatio },
     demographics: S.demographics || null, summary: S.summary || null, events: S.events,
@@ -1140,7 +1285,8 @@ function download(name, content, type) {
    BOOT
    ===================================================================== */
 log('session_init', { details: { condition_source: S.conditionSource, video_single: S.videoSingle,
-  video_multi: S.videoMulti, fast_mode: FAST, user_agent: navigator.userAgent,
+  video_multi: S.videoMulti, math_single_list: S.mathSingle, math_multi_list: S.mathMulti,
+  math_source: S.mathSource, fast_mode: FAST, user_agent: navigator.userAgent,
   viewport: `${innerWidth}x${innerHeight}`, protocol: location.protocol } });
 showStart();
 </script>
