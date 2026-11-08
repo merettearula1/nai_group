@@ -1302,22 +1302,26 @@ function showEnd() {
     <h2>${esc(t('researcher_title'))}</h2>
     <p class="muted">ID: <b>${esc(S.pid)}</b> · condition ${S.condition} (${S.conditionSource}) · math ${S.mathSingle} alone / ${S.mathMulti} multi (${S.mathSource})${FAST ? ' · TEST MODE' : ''} · ${S.events.length} events</p>
     <p id="upStatus" class="muted" hidden></p>
-    <div class="actions"><button id="csv">${esc(t('download_csv'))}</button>
-    <button id="upRetry" class="secondary" hidden>${esc(t('upload_retry'))}</button></div></div>`);
+    <div class="actions"><button id="upRetry" hidden>${esc(t('upload_retry'))}</button>
+    <button id="csv" class="secondary" hidden>${esc(t('download_csv'))}</button></div></div>`);
   const stamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-');
   const fileName = `multitask_${S.pid}_${stamp}.csv`;
   document.getElementById('csv').onclick = () => download(fileName, exportCSV(), 'text/csv;charset=utf-8');
+  // Download CSV is shown only as a fallback: when email sending is not set up or has failed.
   if (CONFIG.upload?.url) {
     document.getElementById('upRetry').onclick = () => uploadCSV(fileName);
     uploadCSV(fileName);
+  } else {
+    document.getElementById('csv').hidden = false;
   }
 }
 
 /** Sends the CSV to the Apps Script web app (CONFIG.upload), which emails it and saves it to Drive. */
 async function uploadCSV(fileName) {
   const st = document.getElementById('upStatus'), retry = document.getElementById('upRetry');
+  const dl = document.getElementById('csv');
   const show = (key, isErr) => { if (!st) return; st.hidden = false; st.textContent = t(key);
-    st.style.color = isErr ? 'var(--err)' : ''; if (retry) retry.hidden = !isErr; };
+    st.style.color = isErr ? 'var(--err)' : ''; if (retry) retry.hidden = !isErr; if (dl) dl.hidden = !isErr; };
   show('upload_sending');
   log('data_upload_start', { response: fileName });
   const body = JSON.stringify({ token: CONFIG.upload.token, filename: fileName, participant_id: S.pid,
