@@ -13,7 +13,7 @@ Ask them to use a computer, not a phone, with Chrome, Edge or Firefox.
 python3 -m http.server 8000 --bind 127.0.0.1   # then open http://localhost:8000/experiment.html
 ```
 
-Before the first video there's a short **"Videopleieri ettevalmistus"** step. It shows ERR's page so the participant can accept ERR's cookie notice; otherwise the notice would cover the cropped, locked player. It's logged as `screen` (`player_setup`) and `player_setup_done`.
+The first video's intro screen ("Video vaatamine") also shows the part of ERR's page where ERR's cookie notice appears, so the participant can accept it before starting; otherwise the notice would cover the cropped, locked player. It's logged as `screen` (`cookie_frame`) and `player_setup_done`.
 
 ### URL parameters
 

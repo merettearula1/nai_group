@@ -328,8 +328,7 @@ const CONFIG = {
                   bachelor: 'Bakalaureusekraad', master: 'Magistrikraad', doctoral: 'Doktorikraad' },
       edu_err: 'Palun valige haridustase.',
       continue_btn: 'Jätka',
-      setup_title: 'Videopleieri ettevalmistus',
-      setup_text: '<p>Videod näidatakse ERR-i (Jupiteri) pleieris. Allolevas aknas võib ilmuda ERR-i küpsiste teade – vajutage seal <b>„Nõustun vajalike küpsistega“</b>.</p><p>Kui teadet ei ilmu, vajutage lihtsalt <b>Jätka</b>. Videot siin vaatama ei pea.</p>',
+      cookie_text: '<p><b>Enne alustamist:</b> allolevas aknas võib ilmuda ERR-i küpsiste teade – vajutage seal <b>„Nõustun vajalike küpsistega“</b>. Kui teadet ei ilmu, võite kohe alustada.</p>',
       video_intro_title: 'Video vaatamine',
       video_intro_text: '<p>Järgmisena näete umbes 5-minutilist videot. Vaadake see tähelepanelikult lõpuni – pärast videot vastate selle sisu kohta kuuele küsimusele.</p><p>Videot ei saa peatada ega kerida. Kui video lõpeb, avanevad küsimused automaatselt.</p>',
       start_video_btn: 'Alusta videoga',
@@ -393,8 +392,7 @@ const CONFIG = {
                   bachelor: "Bachelor's degree", master: "Master's degree", doctoral: 'Doctoral degree' },
       edu_err: 'Please choose your education level.',
       continue_btn: 'Continue',
-      setup_title: 'Preparing the video player',
-      setup_text: '<p>The videos are shown in the ERR (Jupiter) player. A cookie notice from ERR may appear in the window below – click <b>"Nõustun vajalike küpsistega"</b> (accept necessary cookies).</p><p>If no notice appears, just click <b>Continue</b>. You don\'t need to watch anything here.</p>',
+      cookie_text: '<p><b>Before you start:</b> a cookie notice from ERR may appear in the window below – click <b>"Nõustun vajalike küpsistega"</b> (accept necessary cookies). If no notice appears, you can start right away.</p>',
       video_intro_title: 'Watching a video',
       video_intro_text: '<p>Next you will watch a video of about 5 minutes. Watch it carefully to the end. Afterwards you will answer six questions about its content.</p><p>The video cannot be paused or skipped. When it ends, the questions open automatically.</p>',
       start_video_btn: 'Start video',
@@ -1151,48 +1149,49 @@ function showDemographics() {
     log('demographic', { item_id: 'gender', response: S.demographics.gender, rt_ms: rt });
     log('demographic', { item_id: 'education', response: S.demographics.education, rt_ms: rt });
     log('phase_end', { details: { name: 'demographics' } });
-    showPlayerSetup(showVideoSingle);
+    showVideoSingle();
   };
 }
 
-/** Before the first ERR video: show ERR's page so the participant can accept its cookie notice. */
-function showPlayerSetup(next) {
+/** Shows the part of ERR's page where its cookie notice appears, so the participant can accept it before the
+    first video (in the cropped, locked player the notice's buttons cannot be reached). Returns a cleanup
+    function, or null when no ERR video is used. */
+function mountCookieFrame(box) {
   const v = [CONFIG.videos[S.videoSingle], CONFIG.videos[S.videoMulti]].find(x => x && x.type === 'err');
-  if (!v || !CONFIG.video.errCookieStep) return next();
+  if (!v || !CONFIG.video.errCookieStep || !box) return null;
   const fw = v.crop?.frameWidth || 1778, fh = v.crop?.frameHeight || 1000, cv = CONFIG.video.errCookieView;
-  render(`<div class="card" style="max-width:900px"><h1>${esc(t('setup_title'))}</h1>${t('setup_text')}
-    <div id="setupBox" style="position:relative;width:100%;aspect-ratio:${cv.width}/${cv.height};overflow:hidden;
-      border:1px solid var(--line);border-radius:8px;background:#000"></div>
-    <div class="actions"><button id="go">${esc(t('continue_btn'))}</button></div></div>`);
-  const box = document.getElementById('setupBox');
+  Object.assign(box.style, { position: 'relative', width: '100%', aspectRatio: `${cv.width} / ${cv.height}`,
+    overflow: 'hidden', border: '1px solid var(--line)', borderRadius: '8px', background: '#000', marginTop: '8px' });
   const fr = document.createElement('iframe');
   fr.src = v.url;
   Object.assign(fr.style, { position: 'absolute', left: '0', top: '0', border: '0',
     width: fw + 'px', height: fh + 'px', transformOrigin: '0 0' });
   box.appendChild(fr);
-  const fit = () => { const sc = box.clientWidth / cv.width;
-    fr.style.transform = `scale(${sc}) translate(${-cv.x}px, ${-cv.y}px)`; };
+  const fit = () => { fr.style.transform = `scale(${box.clientWidth / cv.width}) translate(${-cv.x}px, ${-cv.y}px)`; };
   fit();
   const ro = new ResizeObserver(fit); ro.observe(box);
   const shownAt = performance.now();
-  log('screen', { details: { screen: 'player_setup', url: v.url } });
-  const go = () => {
+  log('screen', { details: { screen: 'cookie_frame', url: v.url } });
+  return () => {
     ro.disconnect(); fr.src = 'about:blank';
     log('player_setup_done', { rt_ms: Math.round(performance.now() - shownAt) });
-    next();
   };
-  document.getElementById('go').onclick = go;
-  setSkip('player_setup', go);
 }
 
 function showVideoSingle() {
   setPhase(2);
   const key = S.videoSingle;
   log('phase_start', { video: key, task_condition: 'single', details: { name: 'video_single' } });
-  render(`<div class="card"><h1>${esc(t('video_intro_title'))}</h1>${t('video_intro_text')}
+  // First video: the ERR cookie notice is shown on this same screen, above the start button.
+  const withCookies = CONFIG.video.errCookieStep &&
+    [S.videoSingle, S.videoMulti].some(k => CONFIG.videos[k]?.type === 'err');
+  render(`<div class="card"${withCookies ? ' style="max-width:900px"' : ''}><h1>${esc(t('video_intro_title'))}</h1>${t('video_intro_text')}
+    ${withCookies ? t('cookie_text') + '<div id="cookieBox"></div>' : ''}
     <div class="actions"><button id="go">${esc(t('start_video_btn'))}</button></div></div>`);
+  const closeCookies = withCookies ? mountCookieFrame(document.getElementById('cookieBox')) : null;
   setSkip('intro_phase_' + S.phase, () => document.getElementById('go').click());
   document.getElementById('go').onclick = () => {
+    if (closeCookies) closeCookies();
     render(`<div id="vhost" style="width:100%;display:flex;justify-content:center"></div>`);
     mountVideo(document.getElementById('vhost'), key, 'single', () => {
       runQuestions(key, 'single', () => {
