@@ -1,0 +1,1148 @@
+<!doctype html>
+<html lang="et">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Multitasking Experiment</title>
+<style>
+  :root {
+    --bg: #f4f4f1; --fg: #1d1d1b; --muted: #6b6b66; --line: #d6d6d0;
+    --card: #ffffff; --accent: #2f5d8a; --accent-fg: #ffffff; --err: #a3261d;
+    --sel: #eaf1f8;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; background: var(--bg); color: var(--fg);
+    font: 20px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  body:fullscreen, body:-webkit-full-screen { background: var(--bg); }
+  #topLeft { position: fixed; top: 6px; left: 16px; z-index: 5; display: flex; align-items: center; gap: 14px; }
+  #phaseLabel { font-size: 15px; color: var(--muted); }
+  #langToggle { position: fixed; top: 10px; right: 16px; z-index: 5; display: flex; gap: 6px; }
+  #langToggle button { padding: 4px 12px; font-size: 15px; background: var(--card); color: var(--fg); border-color: var(--line); }
+  #langToggle button[aria-pressed="true"] { background: var(--accent); color: var(--accent-fg); border-color: var(--accent); }
+  #app { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 56px 16px 24px; }
+  #app.full { padding: 44px 0 0; align-items: stretch; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 10px;
+    padding: 32px 36px; max-width: 780px; width: 100%; }
+  h1 { font-size: 30px; line-height: 1.25; margin: 0 0 16px; }
+  h2 { font-size: 24px; margin: 24px 0 10px; }
+  p { margin: 0 0 14px; }
+  button { font: inherit; padding: 12px 28px; border-radius: 8px; border: 1px solid var(--accent);
+    background: var(--accent); color: var(--accent-fg); cursor: pointer; }
+  button:disabled { opacity: .4; cursor: not-allowed; }
+  button.secondary { background: var(--card); color: var(--accent); }
+  .actions { margin-top: 24px; display: flex; gap: 12px; flex-wrap: wrap; }
+  .consent { max-height: 38vh; overflow: auto; border: 1px solid var(--line); padding: 12px 16px;
+    border-radius: 8px; font-size: 17px; background: #fafaf8; }
+  .check { display: flex; gap: 12px; align-items: flex-start; margin-top: 16px; cursor: pointer; }
+  .check input { width: 22px; height: 22px; margin-top: 4px; flex: none; }
+  .field { margin: 20px 0; }
+  .field > .lbl { display: block; font-weight: 600; margin-bottom: 6px; }
+  input[type=number], select { font: inherit; padding: 8px 12px; border: 1px solid #b5b5ae;
+    border-radius: 6px; width: 100%; max-width: 360px; background: #fff; color: var(--fg); }
+  .radios { display: flex; gap: 20px; flex-wrap: wrap; }
+  .radios label { display: flex; gap: 8px; align-items: center; cursor: pointer; }
+  .radios input { width: 20px; height: 20px; }
+  .err { color: var(--err); font-size: 16px; min-height: 1.4em; margin-top: 4px; }
+  .q-text { font-size: 24px; font-weight: 600; margin-bottom: 18px; }
+  .opt { display: flex; gap: 14px; align-items: center; padding: 14px 18px; border: 1px solid var(--line);
+    border-radius: 8px; margin: 10px 0; cursor: pointer; }
+  .opt input { width: 20px; height: 20px; flex: none; }
+  .opt.selected { border-color: var(--accent); background: var(--sel); }
+  .muted { color: var(--muted); font-size: 16px; }
+  table.results { width: 100%; border-collapse: collapse; margin: 8px 0 8px; font-variant-numeric: tabular-nums; }
+  table.results th, table.results td { padding: 10px 12px; border-bottom: 1px solid var(--line); text-align: left; }
+  table.results th:not(:first-child), table.results td:not(:first-child) { text-align: right; white-space: nowrap; }
+  table.results thead th { font-size: 16px; color: var(--muted); font-weight: 600; }
+
+  /* Video */
+  .vstage { position: relative; background: #000; aspect-ratio: 16 / 9;
+    width: min(96vw, calc((100vh - 80px) * 16 / 9)); }
+  .vinner, .vinner iframe, .vinner video { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
+  .vshield { position: absolute; inset: 0; z-index: 2; display: flex; align-items: center; justify-content: center; }
+  .vshield.passthrough { pointer-events: none; }
+  .vshield button { pointer-events: auto; }
+  .vnote { color: var(--muted); font-size: 16px; text-align: center; margin-top: 8px; }
+  .vwrap { display: flex; flex-direction: column; align-items: center; }
+  .ph { position: absolute; inset: 0; background: #2b2f33; color: #f1f1ee; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; text-align: center; padding: 6%; }
+  .ph-tag { position: absolute; top: 12px; left: 16px; font-size: 14px; opacity: .6; }
+  .ph-slide { font-size: clamp(18px, 3.2vw, 40px); line-height: 1.35; max-width: 90%; }
+
+  /* Split screen */
+  .split { display: grid; grid-template-columns: minmax(0, 7fr) minmax(0, 3fr); width: 100%; height: calc(100vh - 44px); }
+  /* math column is narrow: scale equation + input to fit */
+  .split .eq { font-size: clamp(28px, 3.4vw, 56px); }
+  .split .math input { font-size: clamp(26px, 2.8vw, 44px); width: 100%; max-width: 240px; }
+  .split > div { display: flex; align-items: center; justify-content: center; padding: 16px; min-width: 0; }
+  .split > .left { border-right: 1px solid var(--line); flex-direction: column; }
+  .split .vstage { width: min(100%, calc((100vh - 80px) * 16 / 9)); }
+
+  /* Math */
+  .math { text-align: center; }
+  .eq { font-size: 60px; font-variant-numeric: tabular-nums; margin-bottom: 24px; white-space: nowrap; }
+  .math input { font: inherit; font-size: 46px; width: 260px; max-width: 80vw; text-align: center; padding: 8px;
+    border: 2px solid #b5b5ae; border-radius: 8px; font-variant-numeric: tabular-nums; }
+  .math input:focus { outline: none; border-color: var(--accent); }
+  .hint { color: var(--muted); font-size: 16px; margin-top: 12px; }
+
+  /* Timer + test skip button */
+  #timer { font-size: 22px; font-weight: 600;
+    font-variant-numeric: tabular-nums; color: var(--fg); background: var(--card);
+    border: 1px solid var(--line); border-radius: 8px; padding: 2px 12px; }
+  #timer[hidden], #skipBtn[hidden] { display: none; }
+  #skipBtn { position: fixed; bottom: 16px; right: 16px; z-index: 50; padding: 8px 18px; font-size: 15px;
+    background: #8a2f2f; border-color: #8a2f2f; }
+
+  /* Modal */
+  #modal { position: fixed; inset: 0; background: rgba(0,0,0,.65); z-index: 100;
+    display: flex; align-items: center; justify-content: center; padding: 16px; }
+  #modal[hidden] { display: none; }
+
+  @media (max-width: 700px) {
+    .card { padding: 22px 18px; }
+    .split { grid-template-columns: 1fr; grid-template-rows: auto 1fr; height: auto; }
+    .split > .left { border-right: 0; border-bottom: 1px solid var(--line); }
+    .eq { font-size: 42px; }
+  }
+</style>
+</head>
+<body>
+<div id="topLeft"><div id="phaseLabel"></div><div id="timer" hidden aria-live="off"></div></div>
+<div id="langToggle" hidden></div>
+<main id="app"></main>
+<button id="skipBtn" type="button" hidden>Skip ⏭ (test)</button>
+<div id="modal" hidden></div>
+
+<script>
+/* =====================================================================
+   CONFIG — all editable values live here
+   ===================================================================== */
+const CONFIG = {
+  languages: ['et', 'en'],
+  defaultLanguage: 'et',
+  showLanguageToggle: true,          // toggle shown on the start screen only
+
+  /* Video types:
+     - 'youtube'     : url = any YouTube link or 11-char video ID. Optional startSec / endSec to cut a clip.
+     - 'err'         : url = the iframe embed src from ERR / Jupiter (err.ee, jupiter.err.ee).
+                       ERR has no public "ended" event, so the video ends after durationSec + errEndBufferSec.
+     - 'mp4'         : url = path/URL to a video file (most controllable option).
+     - 'placeholder' : built-in text "video" for piloting; shows `slides` in sequence over durationSec.
+     durationSec: expected length. For youtube/mp4 it is only a fallback if the end event never arrives. */
+  videos: {
+    A: {
+      type: 'placeholder',
+      url: '',
+      durationSec: 300,
+      label: 'Video A (placeholder)',
+      slides: [
+        { et: 'Valgjärve uurimisjaam rajati 1962. aastal.', en: 'The Lake Valgjärv research station was founded in 1962.' },
+        { et: 'Suvel töötab jaamas kaksteist teadlast.', en: 'Twelve researchers work at the station in summer.' },
+        { et: 'Järv on kõige sügavamas kohas 8 meetrit sügav.', en: 'At its deepest point, the lake is 8 metres deep.' },
+        { et: 'Järve kõige levinum kala on ahven.', en: 'The most common fish in the lake is perch.' },
+        { et: 'Veeproove võetakse igal teisipäeval.', en: 'Water samples are taken every Tuesday.' },
+        { et: 'Jaama paat on värvitud roheliseks.', en: "The station's boat is painted green." },
+      ],
+      questions: [
+        { id: 'A1', difficulty: 'easy',
+          text: { et: 'Mis värvi on jaama paat?', en: "What colour is the station's boat?" },
+          options: [ { et: 'Punane', en: 'Red' }, { et: 'Roheline', en: 'Green' }, { et: 'Sinine', en: 'Blue' }, { et: 'Valge', en: 'White' } ],
+          correct: 1 },
+        { id: 'A2', difficulty: 'easy',
+          text: { et: 'Milline kala on järves kõige levinum?', en: 'Which fish is most common in the lake?' },
+          options: [ { et: 'Haug', en: 'Pike' }, { et: 'Särg', en: 'Roach' }, { et: 'Ahven', en: 'Perch' }, { et: 'Angerjas', en: 'Eel' } ],
+          correct: 2 },
+        { id: 'A3', difficulty: 'intermediate',
+          text: { et: 'Mitu teadlast töötab jaamas suvel?', en: 'How many researchers work at the station in summer?' },
+          options: [ { et: '8', en: '8' }, { et: '10', en: '10' }, { et: '12', en: '12' }, { et: '15', en: '15' } ],
+          correct: 2 },
+        { id: 'A4', difficulty: 'intermediate',
+          text: { et: 'Mis päeval võetakse veeproove?', en: 'On which day are water samples taken?' },
+          options: [ { et: 'Esmaspäeval', en: 'Monday' }, { et: 'Teisipäeval', en: 'Tuesday' }, { et: 'Neljapäeval', en: 'Thursday' }, { et: 'Reedel', en: 'Friday' } ],
+          correct: 1 },
+        { id: 'A5', difficulty: 'difficult',
+          text: { et: 'Mis aastal jaam rajati?', en: 'In which year was the station founded?' },
+          options: [ { et: '1958', en: '1958' }, { et: '1962', en: '1962' }, { et: '1971', en: '1971' }, { et: '1980', en: '1980' } ],
+          correct: 1 },
+        { id: 'A6', difficulty: 'difficult',
+          text: { et: 'Kui sügav on järv kõige sügavamas kohas?', en: 'How deep is the lake at its deepest point?' },
+          options: [ { et: '5 m', en: '5 m' }, { et: '8 m', en: '8 m' }, { et: '11 m', en: '11 m' }, { et: '14 m', en: '14 m' } ],
+          correct: 1 },
+      ],
+    },
+    B: {
+      type: 'placeholder',
+      url: '',
+      durationSec: 300,
+      label: 'Video B (placeholder)',
+      slides: [
+        { et: 'Sadama pagariäri avatakse kell 6 hommikul.', en: 'The harbour bakery opens at 6 in the morning.' },
+        { et: 'Pagariäri kõige populaarsem toode on rukkileib.', en: "The bakery's best-selling product is rye bread." },
+        { et: 'Jahu tuleb veskist, mis asub 40 km kaugusel.', en: 'The flour comes from a mill 40 km away.' },
+        { et: 'Hommikuvahetuses töötab neli pagarit.', en: 'Four bakers work the morning shift.' },
+        { et: 'Laupäeviti küpsetatakse kaneelisaiu.', en: 'On Saturdays they bake cinnamon buns.' },
+        { et: 'Pagariäri ahi ehitati 1994. aastal.', en: "The bakery's oven was built in 1994." },
+      ],
+      questions: [
+        { id: 'B1', difficulty: 'easy',
+          text: { et: 'Mis on pagariäri kõige populaarsem toode?', en: "What is the bakery's best-selling product?" },
+          options: [ { et: 'Sai', en: 'White bread' }, { et: 'Rukkileib', en: 'Rye bread' }, { et: 'Kook', en: 'Cake' }, { et: 'Pirukad', en: 'Pies' } ],
+          correct: 1 },
+        { id: 'B2', difficulty: 'easy',
+          text: { et: 'Mida küpsetatakse laupäeviti?', en: 'What do they bake on Saturdays?' },
+          options: [ { et: 'Kaneelisaiu', en: 'Cinnamon buns' }, { et: 'Kringlit', en: 'Kringle' }, { et: 'Küpsiseid', en: 'Cookies' }, { et: 'Pirukaid', en: 'Pies' } ],
+          correct: 0 },
+        { id: 'B3', difficulty: 'intermediate',
+          text: { et: 'Mis kell pagariäri avatakse?', en: 'What time does the bakery open?' },
+          options: [ { et: 'Kell 5', en: '5 am' }, { et: 'Kell 6', en: '6 am' }, { et: 'Kell 7', en: '7 am' }, { et: 'Kell 8', en: '8 am' } ],
+          correct: 1 },
+        { id: 'B4', difficulty: 'intermediate',
+          text: { et: 'Mitu pagarit töötab hommikuvahetuses?', en: 'How many bakers work the morning shift?' },
+          options: [ { et: '2', en: '2' }, { et: '3', en: '3' }, { et: '4', en: '4' }, { et: '6', en: '6' } ],
+          correct: 2 },
+        { id: 'B5', difficulty: 'difficult',
+          text: { et: 'Kui kaugel asub veski, kust jahu tuleb?', en: 'How far away is the mill the flour comes from?' },
+          options: [ { et: '15 km', en: '15 km' }, { et: '25 km', en: '25 km' }, { et: '40 km', en: '40 km' }, { et: '60 km', en: '60 km' } ],
+          correct: 2 },
+        { id: 'B6', difficulty: 'difficult',
+          text: { et: 'Mis aastal ahi ehitati?', en: 'In which year was the oven built?' },
+          options: [ { et: '1989', en: '1989' }, { et: '1994', en: '1994' }, { et: '1999', en: '1999' }, { et: '2004', en: '2004' } ],
+          correct: 1 },
+      ],
+    },
+    /* Examples:
+    A: { type: 'youtube', url: 'https://www.youtube.com/watch?v=XXXXXXXXXXX', durationSec: 300, startSec: 0, questions: [...] },
+    B: { type: 'err', url: 'https://jupiter.err.ee/embed/...', durationSec: 300, questions: [...] },
+    */
+  },
+
+  video: {
+    allowPause: false,        // false: clicks on the player are blocked (YouTube/mp4) and pauses are auto-resumed
+    endGraceSec: 15,          // youtube/mp4: fallback ends the video this long after the expected end
+    errEndBufferSec: 3,       // err: added to durationSec (no ended event available)
+    errBlockClicks: false,    // err: block clicks on the player (only if ERR autoplays for you)
+    startCheckMs: 2500,       // if playback hasn't started by then, show a "click to start" button
+  },
+
+  math: {
+    singleDurationSec: 300,   // Phase 3 fixed duration. Phase 4 math runs until the video ends.
+    allowNegativeResults: false,
+    /* Fixed problem lists: every participant gets the same problems in the same order.
+       'single' = Phase 3 (math alone), 'multi' = Phase 4 (math during video).
+       Lists are matched: same order of + / −, 13 with carry/borrow and 12 without per operation.
+       If a participant reaches the end of a list, it starts again from the first problem.
+       Set fixedProblems: null to use random problems from `operations` instead. */
+    fixedProblems: {
+      single: [
+        '93 + 96', '52 - 26', '97 + 82', '91 - 14', '19 + 39', '48 - 24', '45 - 13', '71 + 82', '27 + 67', '75 - 49',
+        '46 - 17', '87 + 71', '89 - 47', '78 + 55', '25 + 92', '85 - 18', '79 - 14', '71 + 39', '79 - 53', '39 - 14',
+        '18 + 95', '57 + 25', '61 - 21', '37 - 26', '95 + 22', '48 - 26', '71 - 16', '58 + 82', '99 - 26', '33 + 22',
+        '92 - 16', '96 + 24', '94 - 36', '95 + 31', '73 - 54', '62 + 31', '52 + 62', '87 - 19', '78 + 49', '32 + 88',
+        '91 - 22', '31 - 21', '28 + 92', '35 + 13', '82 - 12', '66 + 79', '87 - 48', '69 + 91', '41 + 77', '44 - 18',
+      ],
+      multi: [
+        '96 + 23', '84 - 59', '32 + 37', '83 - 19', '69 + 72', '95 - 44', '92 - 71', '65 + 93', '47 + 66', '82 - 37',
+        '72 - 45', '77 + 32', '95 - 21', '23 + 27', '98 + 71', '67 - 28', '47 - 21', '95 + 48', '54 - 44', '39 - 26',
+        '99 + 52', '97 + 28', '82 - 11', '78 - 55', '82 + 21', '79 - 63', '83 - 66', '58 + 39', '79 - 29', '21 + 31',
+        '75 - 26', '86 + 25', '84 - 69', '74 + 84', '72 - 33', '66 + 52', '92 + 54', '82 - 45', '54 + 16', '39 + 49',
+        '51 - 24', '89 - 72', '88 + 92', '85 + 82', '95 - 74', '78 + 13', '91 - 69', '25 + 39', '71 + 54', '93 - 59',
+      ],
+    },
+    // Random mode only (fixedProblems: null). Each operation is picked with probability proportional to weight.
+    operations: [
+      { op: '+', weight: 1, a: [10, 99], b: [10, 99] },
+      { op: '-', weight: 1, a: [10, 99], b: [10, 99] },
+      // { op: '×', weight: 1, a: [2, 12], b: [2, 9] },
+      // { op: '÷', weight: 1, a: [2, 12], b: [2, 9] },  // a = quotient range, b = divisor range
+    ],
+  },
+
+  // ?fast=1 shortens everything for testing
+  // (videos only; the Phase 3 math always runs for math.singleDurationSec — use the Skip button to cut it short)
+  testMode: { videoSec: 20 },
+
+  // Countdown shown top-left (next to the phase label) during video and math (remaining time of the current task).
+  timer: { show: true },
+
+  // Skip button (bottom-right) on every screen, for testing only.
+  // Shown when skipButton is true, or with ?test=1 or ?fast=1 in the URL.
+  testing: { skipButton: false },
+
+  storageKeyPrefix: 'multitask_',
+
+  text: {
+    et: {
+      doc_title: 'Uuring',
+      start_title: 'Uuring: tähelepanu ja ülesannete lahendamine',
+      start_intro: '<p>Täname, et osalete! Uuring kestab umbes 25 minutit. Te vaatate kahte lühikest videot, vastate nende kohta küsimustele ja lahendate lihtsaid arvutusülesandeid.</p><p>Palun leidke vaikne koht, lülitage telefon hääletuks ja sulgege teised programmid. Videotel on heli – kasutage kõrvaklappe või kõlareid.</p><p>Uuring toimub täisekraanirežiimis. Palun ärge lahkuge täisekraanilt ega vahetage vahekaarti enne uuringu lõppu.</p>',
+      consent_title: 'Teadlik nõusolek',
+      consent_text: '<p>Selles uuringus uuritakse, kuidas mitme ülesande samaaegne tegemine mõjutab sooritust.</p><p>Osalemine on vabatahtlik. Võite igal ajal katkestada ilma põhjust selgitamata.</p><p>Kogume teie vanuse, soo, haridustaseme ning teie vastused ja vastamisajad. Teie nime ega kontaktandmeid ei koguta: teid tähistatakse juhusliku koodiga.</p>',
+      consent_label: 'Olen ülaltoodud teabe läbi lugenud, olen vähemalt 18-aastane ja nõustun uuringus osalema.',
+      start_btn: 'Alusta (avaneb täisekraan)',
+      phase_label: 'Faas {n} / 5',
+      demo_title: 'Taustaandmed',
+      age_label: 'Vanus',
+      age_err: 'Palun sisestage täisarv vahemikus 18–99.',
+      gender_label: 'Sugu',
+      gender_opts: { female: 'Naine', male: 'Mees', other: 'Muu' },
+      gender_err: 'Palun valige üks variant.',
+      edu_label: 'Kõrgeim lõpetatud haridustase',
+      edu_placeholder: '– valige –',
+      edu_opts: { basic: 'Põhiharidus', secondary: 'Keskharidus', vocational: 'Kutseharidus',
+                  bachelor: 'Bakalaureusekraad', master: 'Magistrikraad', doctoral: 'Doktorikraad' },
+      edu_err: 'Palun valige haridustase.',
+      continue_btn: 'Jätka',
+      video_intro_title: 'Video vaatamine',
+      video_intro_text: '<p>Järgmisena näete umbes 5-minutilist videot. Vaadake see tähelepanelikult lõpuni – pärast videot vastate selle sisu kohta kuuele küsimusele.</p><p>Videot ei saa peatada ega kerida. Kui video lõpeb, avanevad küsimused automaatselt.</p>',
+      start_video_btn: 'Alusta videoga',
+      video_click_start: 'Klõpsake video alustamiseks',
+      err_hint: 'Kui video ei käivitu ise, vajutage mängijas esitusnuppu.',
+      questions_intro_title: 'Küsimused video kohta',
+      questions_intro_text: '<p>Video on lõppenud. Vastake nüüd kuuele küsimusele video sisu kohta. Igal küsimusel on üks õige vastus.</p>',
+      start_questions_btn: 'Alusta küsimustega',
+      q_label: 'Küsimus {i} / {n}',
+      math_intro_title: 'Arvutamine',
+      math_intro_text: '<p>Järgmisena näete ükshaaval lihtsaid arvutusülesandeid. Kirjutage vastus ja vajutage <b>Enter</b> – kohe ilmub uus ülesanne.</p><p>Lahendage võimalikult palju ülesandeid võimalikult täpselt. Ülesanne kestab 5 minutit ja lõpeb automaatselt.</p>',
+      start_math_btn: 'Alusta arvutamisega',
+      math_hint: 'Kirjutage vastus ja vajutage Enter',
+      multi_intro_title: 'Video ja arvutamine korraga',
+      multi_intro_text: '<p>Nüüd teete mõlemat ülesannet korraga.</p><p><b>Vasakul</b> mängib uus video. Jälgige seda tähelepanelikult – pärast videot vastate selle kohta kuuele küsimusele.</p><p><b>Paremal</b> lahendage samal ajal arvutusülesandeid nagu varem: kirjutage vastus ja vajutage Enter.</p><p>Püüdke teha mõlemat võimalikult hästi. Kui video lõpeb, lõpeb ka arvutamine.</p>',
+      start_multi_btn: 'Alusta',
+      end_title: 'Aitäh osalemast!',
+      end_text: '<p>Uuring on lõppenud. Palun andke uurijale teada.</p>',
+      results_title: 'Teie tulemused',
+      results_task: 'Ülesanne',
+      results_alone: 'Eraldi',
+      results_multi: 'Korraga',
+      results_video: 'Õiged vastused video küsimustele',
+      results_math_correct: 'Õigesti lahendatud arvutusülesanded',
+      results_math_wrong: 'Valesti lahendatud arvutusülesanded',
+      results_math_rt: 'Keskmine aeg ülesande kohta',
+      results_sec: 's',
+      debrief_title: 'Uuringu eesmärk',
+      debrief_text: '<p>Selles uuringus võrdlesime, kuidas inimesed sooritavad video mõistmise ja arvutamise ülesandeid eraldi ning samaaegselt. Varasemate uuringute põhjal eeldame, et kahe ülesande samaaegsel tegemisel on sooritus aeglasem ja ebatäpsem. Videote järjekord valiti juhuslikult.</p><p>Palun ärge rääkige uuringu sisust teistele võimalikele osalejatele enne andmekogumise lõppu.</p>',
+      researcher_title: 'Uurijale',
+      download_csv: 'Laadi alla CSV',
+      fs_title: 'Palun naaske täisekraanile',
+      fs_text: '<p>Uuring peab toimuma täisekraanirežiimis.</p>',
+      fs_btn: 'Naase täisekraanile',
+      tab_title: 'Palun jääge sellele lehele',
+      tab_text: '<p>Lahkusite uuringu lehelt. Palun ärge vahetage vahekaarte ega programme kuni uuringu lõpuni.</p>',
+      tab_btn: 'Jätka',
+    },
+    en: {
+      doc_title: 'Study',
+      start_title: 'Study: attention and task performance',
+      start_intro: '<p>Thank you for taking part! The study takes about 25 minutes. You will watch two short videos, answer questions about them, and solve simple arithmetic problems.</p><p>Please find a quiet place, silence your phone and close other programs. The videos have sound, so use headphones or speakers.</p><p>The study runs in fullscreen. Please do not leave fullscreen or switch tabs until the study is over.</p>',
+      consent_title: 'Informed consent',
+      consent_text: '<p>This study examines how doing several tasks at once affects performance.</p><p>Participation is voluntary. You may stop at any time without giving a reason.</p><p>We collect your age, gender, education level, and your answers and response times. We do not collect your name or contact details: you are identified only by a random code.</p>',
+      consent_label: 'I have read the information above, I am at least 18 years old, and I agree to take part in the study.',
+      start_btn: 'Start (opens fullscreen)',
+      phase_label: 'Phase {n} of 5',
+      demo_title: 'Background information',
+      age_label: 'Age',
+      age_err: 'Please enter a whole number from 18 to 99.',
+      gender_label: 'Gender',
+      gender_opts: { female: 'Female', male: 'Male', other: 'Other' },
+      gender_err: 'Please choose one option.',
+      edu_label: 'Highest completed education',
+      edu_placeholder: '– select –',
+      edu_opts: { basic: 'Basic education', secondary: 'Secondary education', vocational: 'Vocational education',
+                  bachelor: "Bachelor's degree", master: "Master's degree", doctoral: 'Doctoral degree' },
+      edu_err: 'Please choose your education level.',
+      continue_btn: 'Continue',
+      video_intro_title: 'Watching a video',
+      video_intro_text: '<p>Next you will watch a video of about 5 minutes. Watch it carefully to the end. Afterwards you will answer six questions about its content.</p><p>The video cannot be paused or skipped. When it ends, the questions open automatically.</p>',
+      start_video_btn: 'Start video',
+      video_click_start: 'Click to start the video',
+      err_hint: "If the video doesn't start on its own, press play in the player.",
+      questions_intro_title: 'Questions about the video',
+      questions_intro_text: '<p>The video has ended. Now answer six questions about its content. Each question has one correct answer.</p>',
+      start_questions_btn: 'Start questions',
+      q_label: 'Question {i} of {n}',
+      math_intro_title: 'Arithmetic',
+      math_intro_text: '<p>Next you will see simple arithmetic problems, one at a time. Type your answer and press <b>Enter</b>. A new problem appears straight away.</p><p>Solve as many problems as you can, as accurately as you can. This task lasts 5 minutes and ends automatically.</p>',
+      start_math_btn: 'Start arithmetic',
+      math_hint: 'Type your answer and press Enter',
+      multi_intro_title: 'Video and arithmetic together',
+      multi_intro_text: '<p>Now you will do both tasks at the same time.</p><p>On the <b>left</b>, a new video will play. Watch it carefully, because afterwards you will answer six questions about it.</p><p>On the <b>right</b>, solve arithmetic problems as before: type your answer and press Enter.</p><p>Try to do both as well as you can. When the video ends, the arithmetic task ends too.</p>',
+      start_multi_btn: 'Start',
+      end_title: 'Thank you for taking part!',
+      end_text: '<p>The study is complete. Please let the researcher know.</p>',
+      results_title: 'Your results',
+      results_task: 'Task',
+      results_alone: 'Alone',
+      results_multi: 'Multitasking',
+      results_video: 'Correct answers to video questions',
+      results_math_correct: 'Arithmetic problems solved correctly',
+      results_math_wrong: 'Arithmetic problems answered wrong',
+      results_math_rt: 'Average time per problem',
+      results_sec: 's',
+      debrief_title: 'About this study',
+      debrief_text: '<p>In this study we compared how people perform a video comprehension task and an arithmetic task separately and at the same time. Based on earlier research, we expect performance to be slower and less accurate when both tasks are done together. The order of the videos was chosen at random.</p><p>Please do not discuss the study with other potential participants until data collection is over.</p>',
+      researcher_title: 'For the researcher',
+      download_csv: 'Download CSV',
+      fs_title: 'Please return to fullscreen',
+      fs_text: '<p>The study must run in fullscreen.</p>',
+      fs_btn: 'Return to fullscreen',
+      tab_title: 'Please stay on this page',
+      tab_text: '<p>You left the study page. Please do not switch tabs or programs until the study is over.</p>',
+      tab_btn: 'Continue',
+    },
+  },
+};
+
+/* =====================================================================
+   STATE, HELPERS, LOGGING
+   ===================================================================== */
+const URLP = new URLSearchParams(location.search);
+const FAST = URLP.get('fast') === '1';
+const SKIP_ON = CONFIG.testing.skipButton || URLP.get('test') === '1' || FAST;
+const $app = document.getElementById('app');
+const $phase = document.getElementById('phaseLabel');
+const $modal = document.getElementById('modal');
+const $lang = document.getElementById('langToggle');
+
+function randomId() {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  const buf = new Uint32Array(6); crypto.getRandomValues(buf);
+  return 'P' + Array.from(buf, n => chars[n % chars.length]).join('');
+}
+function randInt(min, max) {
+  const buf = new Uint32Array(1); crypto.getRandomValues(buf);
+  return min + (buf[0] % (max - min + 1));
+}
+
+const forced = URLP.get('condition');
+const S = {
+  pid: URLP.get('pid') || randomId(),
+  condition: (forced === '1' || forced === '2') ? Number(forced) : randInt(1, 2),
+  conditionSource: (forced === '1' || forced === '2') ? 'url' : 'random',
+  lang: CONFIG.languages.includes(URLP.get('lang')) ? URLP.get('lang') : CONFIG.defaultLanguage,
+  t0: performance.now(),
+  startedAt: new Date().toISOString(),
+  events: [],
+  phase: 0,
+  active: false,      // between Start and the end screen
+  modal: null,        // 'fs' | 'tab' | null
+  onModalClose: null,
+  stats: {},
+};
+S.videoSingle = S.condition === 1 ? 'A' : 'B';
+S.videoMulti  = S.condition === 1 ? 'B' : 'A';
+
+const COLS = ['participant_id', 'condition', 'language', 'event_index', 'timestamp_ms', 'iso_time', 't_ms',
+  'phase', 'event_type', 'task_condition', 'video', 'item_index', 'item_id', 'difficulty', 'stimulus',
+  'correct_answer', 'response', 'response_index', 'correct', 'rt_ms', 'details'];
+
+function log(type, f = {}) {
+  const now = Date.now();
+  const ev = {};
+  COLS.forEach(c => ev[c] = '');
+  Object.assign(ev, {
+    participant_id: S.pid, condition: S.condition, language: S.lang, event_index: S.events.length,
+    timestamp_ms: now, iso_time: new Date(now).toISOString(), t_ms: Math.round(performance.now() - S.t0),
+    phase: S.phase, event_type: type,
+  }, f);
+  if (ev.details && typeof ev.details === 'object') ev.details = JSON.stringify(ev.details);
+  S.events.push(ev);
+  persist();
+}
+
+function persist() {
+  try { localStorage.setItem(CONFIG.storageKeyPrefix + S.pid, JSON.stringify(exportJSON())); } catch (e) { /* ignore */ }
+}
+
+function t(key, vars) {
+  let s = CONFIG.text[S.lang][key] ?? CONFIG.text.en[key] ?? key;
+  if (vars && typeof s === 'string') for (const k in vars) s = s.replaceAll('{' + k + '}', vars[k]);
+  return s;
+}
+function L(o) { return (o == null || typeof o !== 'object') ? String(o ?? '') : (o[S.lang] ?? o.en ?? Object.values(o)[0]); }
+function esc(s) { return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
+
+function setPhase(n) {
+  S.phase = n;
+  $phase.textContent = n >= 1 ? t('phase_label', { n }) : '';
+}
+/* Countdown timer (top-right) */
+const Timer = (() => {
+  const el = document.getElementById('timer');
+  let endAt = 0, iv = null;
+  const fmt = sec => { sec = Math.max(0, Math.ceil(sec)); return Math.floor(sec / 60) + ':' + String(sec % 60).padStart(2, '0'); };
+  const draw = () => { el.textContent = fmt((endAt - performance.now()) / 1000); };
+  return {
+    start(sec) {
+      if (!CONFIG.timer.show) return;
+      endAt = performance.now() + sec * 1000;
+      draw(); el.hidden = false;
+      clearInterval(iv); iv = setInterval(draw, 250);
+    },
+    stop() { clearInterval(iv); iv = null; el.hidden = true; },
+  };
+})();
+
+/* Test-only skip button: each screen registers what "skip" means for it */
+const $skip = document.getElementById('skipBtn');
+$skip.addEventListener('mousedown', e => e.preventDefault());   // don't steal focus from the math input
+$skip.addEventListener('click', () => {
+  const fn = S.skip;
+  if (!fn) return;
+  log('test_skip', { details: { screen: S.skipName } });
+  S.skip = null; $skip.hidden = true;
+  fn();
+});
+function setSkip(name, fn) {
+  S.skip = fn; S.skipName = name;
+  $skip.hidden = !(SKIP_ON && fn);
+}
+
+function render(html, full = false) {
+  setSkip(null, null);
+  Timer.stop();
+  $app.classList.toggle('full', full);
+  $app.innerHTML = html;
+  window.scrollTo(0, 0);
+}
+const sleepFrame = () => new Promise(r => requestAnimationFrame(() => r()));
+
+/* =====================================================================
+   FULLSCREEN, TAB SWITCH, BACK NAVIGATION
+   ===================================================================== */
+const fsElement = () => document.fullscreenElement || document.webkitFullscreenElement;
+const fsSupported = () => !!(document.documentElement.requestFullscreen || document.documentElement.webkitRequestFullscreen);
+function enterFullscreen() {
+  const el = document.documentElement;
+  try {
+    const p = (el.requestFullscreen || el.webkitRequestFullscreen).call(el);
+    return Promise.resolve(p).catch(err => log('fullscreen_error', { details: { message: String(err) } }));
+  } catch (err) { log('fullscreen_error', { details: { message: String(err) } }); return Promise.resolve(); }
+}
+function exitFullscreen() {
+  if (!fsElement()) return;
+  try { (document.exitFullscreen || document.webkitExitFullscreen).call(document); } catch (e) { /* ignore */ }
+}
+
+function onFsChange() {
+  if (fsElement()) {
+    log('fullscreen_enter');
+    if (S.modal === 'fs') closeModal();
+  } else {
+    log('fullscreen_exit');
+    if (S.active) openModal('fs');
+  }
+}
+document.addEventListener('fullscreenchange', onFsChange);
+document.addEventListener('webkitfullscreenchange', onFsChange);
+
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'hidden') {
+    log('tab_hidden');
+  } else {
+    log('tab_visible');
+    if (S.active) openModal('tab');
+  }
+});
+
+history.pushState({ exp: 1 }, '');
+window.addEventListener('popstate', () => {
+  history.pushState({ exp: 1 }, '');
+  if (S.active) log('back_navigation_blocked');
+});
+window.addEventListener('beforeunload', e => {
+  if (S.active) { log('unload_attempt'); e.preventDefault(); e.returnValue = ''; }
+});
+
+function openModal(kind) {
+  // A tab-switch prompt takes priority only when fullscreen is still on; otherwise ask for fullscreen.
+  if (kind === 'tab' && fsSupported() && !fsElement()) kind = 'fs';
+  if (kind === 'fs' && !fsSupported()) return;
+  S.modal = kind;
+  log('prompt_shown', { details: { kind } });
+  const title = kind === 'fs' ? t('fs_title') : t('tab_title');
+  const body  = kind === 'fs' ? t('fs_text') : t('tab_text');
+  const btn   = kind === 'fs' ? t('fs_btn') : t('tab_btn');
+  $modal.innerHTML = `<div class="card" role="dialog" aria-modal="true"><h1>${esc(title)}</h1>${body}
+    <div class="actions"><button id="modalBtn">${esc(btn)}</button></div></div>`;
+  $modal.hidden = false;
+  document.getElementById('modalBtn').onclick = () => {
+    log('prompt_button_click', { details: { kind } });
+    if (fsSupported() && !fsElement()) enterFullscreen();
+    else closeModal();
+  };
+  document.getElementById('modalBtn').focus();
+}
+function closeModal() {
+  if (!S.modal) return;
+  log('prompt_closed', { details: { kind: S.modal } });
+  S.modal = null;
+  $modal.hidden = true;
+  $modal.innerHTML = '';
+  if (S.onModalClose) S.onModalClose();
+}
+
+/* =====================================================================
+   VIDEO PLAYER (youtube / err / mp4 / placeholder)
+   ===================================================================== */
+let ytApiPromise = null;
+function loadYouTubeAPI() {
+  if (window.YT && window.YT.Player) return Promise.resolve();
+  if (!ytApiPromise) {
+    ytApiPromise = new Promise(resolve => {
+      const prev = window.onYouTubeIframeAPIReady;
+      window.onYouTubeIframeAPIReady = () => { prev && prev(); resolve(); };
+      const s = document.createElement('script');
+      s.src = 'https://www.youtube.com/iframe_api';
+      s.onerror = () => log('youtube_api_load_error');
+      document.head.appendChild(s);
+    });
+  }
+  return ytApiPromise;
+}
+function youtubeId(url) {
+  const m = String(url).match(/(?:v=|youtu\.be\/|embed\/|shorts\/|live\/)([\w-]{11})/);
+  return m ? m[1] : (/^[\w-]{11}$/.test(url) ? url : null);
+}
+
+/** Mounts a video into `host`. Calls onEnd(reason) exactly once. Returns { destroy }. */
+function mountVideo(host, key, taskCondition, onEnd) {
+  const v = CONFIG.videos[key];
+  const VC = CONFIG.video;
+  let ended = false, fallbackT = null, capT = null, ticker = null, startCheckT = null, ytPlayer = null;
+  const base = { video: key, task_condition: taskCondition };
+
+  host.innerHTML = `<div class="vwrap" style="width:100%"><div class="vstage">
+      <div class="vinner"></div><div class="vshield"></div></div>
+      <div class="vnote" hidden></div></div>`;
+  const inner = host.querySelector('.vinner');
+  const shield = host.querySelector('.vshield');
+  const note = host.querySelector('.vnote');
+  shield.addEventListener('contextmenu', e => e.preventDefault());
+
+  const mountedAt = performance.now();
+  const vTimer = sec => {   // show remaining video time (respecting test-mode cap)
+    if (FAST) sec = Math.min(sec, CONFIG.testMode.videoSec - (performance.now() - mountedAt) / 1000);
+    Timer.start(sec);
+  };
+  function cleanup() {
+    Timer.stop();
+    clearTimeout(fallbackT); clearTimeout(capT); clearTimeout(startCheckT); clearInterval(ticker);
+    try { if (ytPlayer && ytPlayer.destroy) ytPlayer.destroy(); } catch (e) { /* ignore */ }
+    const media = inner.querySelector('video'); if (media) { media.pause(); media.removeAttribute('src'); media.load(); }
+    const fr = inner.querySelector('iframe'); if (fr) fr.src = 'about:blank';
+    inner.innerHTML = '';
+  }
+  function finish(reason) {
+    if (ended) return;
+    ended = true;
+    log('video_end', { ...base, details: { reason } });
+    cleanup();
+    onEnd(reason);
+  }
+  function setFallback(sec) {
+    clearTimeout(fallbackT);
+    fallbackT = setTimeout(() => finish('fallback_timer'), Math.max(1, sec) * 1000);
+  }
+  function showStartButton(play) {
+    shield.classList.remove('passthrough');
+    shield.innerHTML = `<button type="button">${esc(t('video_click_start'))}</button>`;
+    shield.querySelector('button').onclick = () => {
+      log('video_manual_start_click', base);
+      shield.innerHTML = '';
+      if (VC.allowPause) shield.classList.add('passthrough');
+      play();
+    };
+  }
+
+  log('video_start', { ...base, details: { type: v.type, url: v.url || '', expected_duration_sec: v.durationSec } });
+  if (FAST) capT = setTimeout(() => finish('test_mode_cap'), CONFIG.testMode.videoSec * 1000);
+  if (VC.allowPause) shield.classList.add('passthrough');
+
+  if (v.type === 'youtube') {
+    const id = youtubeId(v.url);
+    if (location.protocol === 'file:') log('warning', { ...base, details: { message: 'YouTube embeds may fail on file:// — serve over http(s).' } });
+    const div = document.createElement('div'); inner.appendChild(div);
+    setFallback(v.durationSec + VC.endGraceSec);
+    vTimer(v.durationSec);
+    let firstPlay = true;
+    loadYouTubeAPI().then(() => {
+      if (ended) return;
+      const pv = { autoplay: 1, controls: 0, disablekb: 1, fs: 0, rel: 0, modestbranding: 1,
+        iv_load_policy: 3, playsinline: 1, cc_load_policy: 0 };
+      if (v.startSec) pv.start = v.startSec;
+      if (v.endSec) pv.end = v.endSec;
+      if (location.protocol.startsWith('http')) pv.origin = location.origin;
+      ytPlayer = new YT.Player(div, {
+        videoId: id, width: '100%', height: '100%', playerVars: pv,
+        events: {
+          onReady: e => {
+            log('video_ready', base);
+            e.target.playVideo();
+            startCheckT = setTimeout(() => {
+              const st = e.target.getPlayerState();
+              if (st !== YT.PlayerState.PLAYING && st !== YT.PlayerState.BUFFERING) showStartButton(() => e.target.playVideo());
+            }, VC.startCheckMs);
+          },
+          onStateChange: e => {
+            const names = { '-1': 'unstarted', 0: 'ended', 1: 'playing', 2: 'paused', 3: 'buffering', 5: 'cued' };
+            log('video_state', { ...base, response: names[e.data] ?? e.data,
+              details: { current_time: Math.round((ytPlayer.getCurrentTime?.() || 0) * 10) / 10 } });
+            if (e.data === YT.PlayerState.PLAYING && firstPlay) {
+              firstPlay = false;
+              const dur = (v.endSec || ytPlayer.getDuration()) - ytPlayer.getCurrentTime();
+              if (dur > 0) { setFallback(dur + VC.endGraceSec); vTimer(dur); }
+            }
+            if (e.data === YT.PlayerState.ENDED) finish('ended_event');
+            if (e.data === YT.PlayerState.PAUSED && !VC.allowPause && !ended) e.target.playVideo();
+          },
+          onError: e => { log('video_error', { ...base, details: { code: e.data } }); setFallback(v.durationSec); },
+        },
+      });
+    });
+  } else if (v.type === 'err') {
+    const fr = document.createElement('iframe');
+    fr.src = v.url;
+    fr.allow = 'autoplay; fullscreen; encrypted-media';
+    fr.setAttribute('allowfullscreen', '');
+    inner.appendChild(fr);
+    if (!VC.errBlockClicks) shield.classList.add('passthrough');
+    note.textContent = t('err_hint'); note.hidden = false;
+    setFallback(v.durationSec + VC.errEndBufferSec);
+    vTimer(v.durationSec + VC.errEndBufferSec);
+  } else if (v.type === 'mp4') {
+    const media = document.createElement('video');
+    media.src = v.url; media.playsInline = true; media.preload = 'auto';
+    if (VC.allowPause) media.controls = true;
+    inner.appendChild(media);
+    media.addEventListener('ended', () => finish('ended_event'));
+    media.addEventListener('error', () => { log('video_error', { ...base, details: { code: media.error && media.error.code } }); setFallback(v.durationSec); });
+    media.addEventListener('pause', () => { if (!VC.allowPause && !ended && !media.ended) media.play().catch(() => {}); });
+    media.addEventListener('loadedmetadata', () => { setFallback(media.duration + VC.endGraceSec); vTimer(media.duration); });
+    setFallback(v.durationSec + VC.endGraceSec);
+    vTimer(v.durationSec);
+    media.play().then(() => log('video_state', { ...base, response: 'playing' }))
+      .catch(() => showStartButton(() => media.play()));
+  } else { // placeholder
+    const dur = FAST ? CONFIG.testMode.videoSec : v.durationSec;
+    const slides = v.slides || [];
+    inner.innerHTML = `<div class="ph"><div class="ph-tag">${esc(v.label || 'Placeholder video ' + key)}</div><div class="ph-slide"></div></div>`;
+    const slideEl = inner.querySelector('.ph-slide');
+    const t0 = performance.now();
+    vTimer(dur);
+    let shown = -1;
+    const tick = () => {
+      const el = (performance.now() - t0) / 1000;
+      if (el >= dur) return finish('ended_event');
+      const i = slides.length ? Math.min(slides.length - 1, Math.floor(el / (dur / slides.length))) : -1;
+      if (i !== shown) { shown = i; slideEl.textContent = i >= 0 ? L(slides[i]) : ''; }
+    };
+    tick();
+    ticker = setInterval(tick, 200);
+  }
+
+  setSkip('video_' + taskCondition, () => finish('test_skip'));
+  return { destroy: () => { ended = true; cleanup(); }, skip: () => finish('test_skip') };
+}
+
+/* =====================================================================
+   MATH TASK
+   ===================================================================== */
+function pickOp() {
+  const ops = CONFIG.math.operations;
+  const total = ops.reduce((s, o) => s + (o.weight ?? 1), 0);
+  let r = Math.random() * total;
+  for (const o of ops) { r -= (o.weight ?? 1); if (r <= 0) return o; }
+  return ops[ops.length - 1];
+}
+function genEquation() {
+  const o = pickOp();
+  let a = randInt(o.a[0], o.a[1]), b = randInt(o.b[0], o.b[1]), ans, sym;
+  switch (o.op) {
+    case '+': ans = a + b; sym = '+'; break;
+    case '-': if (!CONFIG.math.allowNegativeResults && b > a) [a, b] = [b, a]; ans = a - b; sym = '−'; break;
+    case '×': case '*': ans = a * b; sym = '×'; break;
+    case '÷': case '/': ans = a; a = a * b; sym = '÷'; break;
+  }
+  return { text: `${a} ${sym} ${b}`, answer: ans };
+}
+
+/** Renders the math task into `host`. */
+function parseEquation(str) {
+  const m = String(str).trim().match(/^(\d+)\s*([-+−×*÷/])\s*(\d+)$/);
+  if (!m) throw new Error('Bad math problem in CONFIG.math.fixedProblems: ' + str);
+  const a = Number(m[1]), b = Number(m[3]);
+  switch (m[2]) {
+    case '+': return { text: `${a} + ${b}`, answer: a + b };
+    case '-': case '−': return { text: `${a} − ${b}`, answer: a - b };
+    case '×': case '*': return { text: `${a} × ${b}`, answer: a * b };
+    default:  return { text: `${a} ÷ ${b}`, answer: a / b };
+  }
+}
+
+function MathTask(host, taskCondition) {
+  host.innerHTML = `<div class="math"><div class="eq" aria-live="polite"></div>
+    <input type="text" inputmode="numeric" autocomplete="off" autocorrect="off" spellcheck="false" aria-label="answer">
+    <div class="hint">${esc(t('math_hint'))}</div></div>`;
+  const eqEl = host.querySelector('.eq');
+  const inp = host.querySelector('input');
+  const stats = { attempted: 0, correct: 0, wrong: 0, rt_sum: 0 };
+  let cur = null, shownAt = 0, running = false, prev = '', focusT = null;
+
+  const fixed = CONFIG.math.fixedProblems && CONFIG.math.fixedProblems[taskCondition];
+  const list = fixed ? fixed.map(parseEquation) : null;
+  let listPos = 0;
+
+  function next() {
+    let e, guard = 0;
+    if (list) {
+      if (listPos > 0 && listPos % list.length === 0)
+        log('math_list_restart', { task_condition: taskCondition, details: { round: listPos / list.length + 1 } });
+      e = list[listPos % list.length]; listPos++;
+    } else {
+      do { e = genEquation(); } while (e.text === prev && guard++ < 20);
+    }
+    cur = e; prev = e.text;
+    eqEl.textContent = `${e.text} = ?`;
+    inp.value = '';
+    shownAt = performance.now();
+  }
+  inp.addEventListener('input', () => {
+    const cleaned = inp.value.replace(/[^\d-]/g, '').replace(/(?!^)-/g, '');
+    if (cleaned !== inp.value) inp.value = cleaned;
+  });
+  inp.addEventListener('keydown', e => {
+    if (e.key !== 'Enter') return;
+    e.preventDefault();
+    if (!running || S.modal) return;
+    const raw = inp.value.trim();
+    if (raw === '' || raw === '-') return;
+    const rt = Math.round(performance.now() - shownAt);
+    const resp = parseInt(raw, 10);
+    const ok = resp === cur.answer;
+    stats.attempted++; ok ? stats.correct++ : stats.wrong++; stats.rt_sum += rt;
+    log('math_answer', { task_condition: taskCondition, item_index: stats.attempted, stimulus: cur.text,
+      correct_answer: cur.answer, response: resp, correct: ok ? 1 : 0, rt_ms: rt });
+    next();
+  });
+  const keepFocus = () => { if (running && !S.modal && document.activeElement !== inp) inp.focus({ preventScroll: true }); };
+  inp.addEventListener('blur', () => setTimeout(keepFocus, 0));
+
+  return {
+    stats,
+    start() {
+      running = true; next(); inp.focus();
+      focusT = setInterval(keepFocus, 250);
+      S.onModalClose = keepFocus;
+      log('task_start', { task_condition: taskCondition, details: { task: 'math' } });
+    },
+    stop(reason) {
+      if (!running) return stats;
+      running = false; clearInterval(focusT); S.onModalClose = null;
+      inp.disabled = true;
+      if (cur) log('math_unanswered', { task_condition: taskCondition, item_index: stats.attempted + 1,
+        stimulus: cur.text, correct_answer: cur.answer, response: inp.value,
+        rt_ms: Math.round(performance.now() - shownAt) });
+      log('task_end', { task_condition: taskCondition, details: { task: 'math', reason, ...stats } });
+      return stats;
+    },
+  };
+}
+
+/* =====================================================================
+   QUESTIONS (one per screen)
+   ===================================================================== */
+function runQuestions(key, taskCondition, done) {
+  const qs = CONFIG.videos[key].questions;
+  const score = { correct: 0, n: qs.length };
+  render(`<div class="card"><h1>${esc(t('questions_intro_title'))}</h1>${t('questions_intro_text')}
+    <div class="actions"><button id="go">${esc(t('start_questions_btn'))}</button></div></div>`);
+  log('screen', { video: key, task_condition: taskCondition, details: { screen: 'questions_intro' } });
+  document.getElementById('go').onclick = () => show(0);
+  setSkip('questions_intro', () => show(0));
+
+  function show(i) {
+    if (i >= qs.length) {
+      S.stats[`video_${taskCondition}`] = { video: key, ...score };
+      log('questions_end', { video: key, task_condition: taskCondition, details: score });
+      return done();
+    }
+    const q = qs[i];
+    render(`<div class="card"><p class="muted">${esc(t('q_label', { i: i + 1, n: qs.length }))}</p>
+      <div class="q-text">${esc(L(q.text))}</div>
+      <div role="radiogroup">${q.options.map((o, j) => `
+        <label class="opt"><input type="radio" name="q" value="${j}"><span>${esc(L(o))}</span></label>`).join('')}</div>
+      <div class="actions"><button id="next" disabled>${esc(t('continue_btn'))}</button></div></div>`);
+    const shownAt = performance.now();
+    log('question_shown', { video: key, task_condition: taskCondition, item_index: i + 1, item_id: q.id, difficulty: q.difficulty });
+    const btn = document.getElementById('next');
+    setSkip('question_' + q.id, () => {
+      log('question_skipped', { video: key, task_condition: taskCondition, item_index: i + 1, item_id: q.id,
+        difficulty: q.difficulty, rt_ms: Math.round(performance.now() - shownAt) });
+      show(i + 1);
+    });
+    let firstChoiceRt = null;
+    $app.querySelectorAll('input[name=q]').forEach(r => r.addEventListener('change', () => {
+      $app.querySelectorAll('.opt').forEach(l => l.classList.toggle('selected', l.querySelector('input').checked));
+      if (firstChoiceRt === null) firstChoiceRt = Math.round(performance.now() - shownAt);
+      btn.disabled = false;
+    }));
+    btn.onclick = () => {
+      const sel = $app.querySelector('input[name=q]:checked');
+      if (!sel) return;
+      const j = Number(sel.value), ok = j === q.correct;
+      if (ok) score.correct++;
+      log('question_answer', { video: key, task_condition: taskCondition, item_index: i + 1, item_id: q.id,
+        difficulty: q.difficulty, stimulus: L(q.text), correct_answer: L(q.options[q.correct]),
+        response: L(q.options[j]), response_index: j, correct: ok ? 1 : 0,
+        rt_ms: Math.round(performance.now() - shownAt), details: { first_choice_rt_ms: firstChoiceRt } });
+      show(i + 1);
+    };
+  }
+}
+
+/* =====================================================================
+   SCREENS / PHASES
+   ===================================================================== */
+function showStart() {
+  setPhase(0);
+  document.title = t('doc_title');
+  document.documentElement.lang = S.lang;
+  if (CONFIG.showLanguageToggle && CONFIG.languages.length > 1) {
+    $lang.hidden = false;
+    $lang.innerHTML = CONFIG.languages.map(l =>
+      `<button type="button" data-l="${l}" aria-pressed="${l === S.lang}">${l.toUpperCase()}</button>`).join('');
+    $lang.querySelectorAll('button').forEach(b => b.onclick = () => {
+      if (b.dataset.l === S.lang) return;
+      S.lang = b.dataset.l;
+      log('language_change', { response: S.lang });
+      showStart();
+    });
+  }
+  render(`<div class="card">
+    <h1>${esc(t('start_title'))}</h1>${t('start_intro')}
+    <h2>${esc(t('consent_title'))}</h2>
+    <div class="consent">${t('consent_text')}</div>
+    <label class="check"><input type="checkbox" id="consent"><span>${esc(t('consent_label'))}</span></label>
+    <div class="actions"><button id="start" disabled>${esc(t('start_btn'))}</button></div></div>`);
+  const cb = document.getElementById('consent'), btn = document.getElementById('start');
+  cb.onchange = () => { btn.disabled = !cb.checked; };
+  setSkip('start', () => { cb.checked = true; btn.disabled = false; btn.click(); });
+  btn.onclick = () => {
+    $lang.hidden = true;
+    log('consent_given', { response: 1 });
+    S.active = true;
+    if (fsSupported()) enterFullscreen(); else log('fullscreen_unsupported');
+    if (CONFIG.videos.A.type === 'youtube' || CONFIG.videos.B.type === 'youtube') loadYouTubeAPI();
+    showDemographics();
+  };
+}
+
+function showDemographics() {
+  setPhase(1);
+  log('phase_start', { details: { name: 'demographics' } });
+  const g = t('gender_opts'), e = t('edu_opts');
+  render(`<div class="card"><h1>${esc(t('demo_title'))}</h1>
+    <div class="field"><label class="lbl" for="age">${esc(t('age_label'))}</label>
+      <input type="number" id="age" min="18" max="99" step="1" inputmode="numeric" required>
+      <div class="err" id="ageErr"></div></div>
+    <div class="field" role="radiogroup" aria-labelledby="gLbl"><span class="lbl" id="gLbl">${esc(t('gender_label'))}</span>
+      <div class="radios">${Object.keys(g).map(k =>
+        `<label><input type="radio" name="gender" value="${k}" required>${esc(g[k])}</label>`).join('')}</div>
+      <div class="err" id="gErr"></div></div>
+    <div class="field"><label class="lbl" for="edu">${esc(t('edu_label'))}</label>
+      <select id="edu" required><option value="">${esc(t('edu_placeholder'))}</option>${Object.keys(e).map(k =>
+        `<option value="${k}">${esc(e[k])}</option>`).join('')}</select>
+      <div class="err" id="eErr"></div></div>
+    <div class="actions"><button id="cont" disabled>${esc(t('continue_btn'))}</button></div></div>`);
+
+  const age = document.getElementById('age'), edu = document.getElementById('edu'), btn = document.getElementById('cont');
+  const touched = { age: false, gender: false, edu: false };
+  const shownAt = performance.now();
+  function check() {
+    const a = age.value.trim();
+    const ageOk = /^\d+$/.test(a) && +a >= 18 && +a <= 99;
+    const gSel = $app.querySelector('input[name=gender]:checked');
+    const eduOk = edu.value !== '';
+    document.getElementById('ageErr').textContent = touched.age && !ageOk ? t('age_err') : '';
+    document.getElementById('gErr').textContent = touched.gender && !gSel ? t('gender_err') : '';
+    document.getElementById('eErr').textContent = touched.edu && !eduOk ? t('edu_err') : '';
+    btn.disabled = !(ageOk && gSel && eduOk);
+    return { ageOk, gSel, eduOk };
+  }
+  age.addEventListener('input', () => { if (age.value !== '') touched.age = true; check(); });
+  age.addEventListener('blur', () => { touched.age = true; check(); });
+  $app.querySelectorAll('input[name=gender]').forEach(r => r.addEventListener('change', () => { touched.gender = true; check(); }));
+  edu.addEventListener('change', () => { touched.edu = true; check(); });
+  edu.addEventListener('blur', () => { touched.edu = true; check(); });
+  setSkip('demographics', () => {   // fill with dummy test values
+    age.value = '30';
+    $app.querySelector('input[name=gender][value=other]').checked = true;
+    edu.value = Object.keys(e)[0];
+    btn.disabled = false; btn.click();
+  });
+  btn.onclick = () => {
+    const c = check();
+    if (btn.disabled) return;
+    const rt = Math.round(performance.now() - shownAt);
+    S.demographics = { age: +age.value, gender: c.gSel.value, education: edu.value };
+    log('demographic', { item_id: 'age', response: S.demographics.age, rt_ms: rt });
+    log('demographic', { item_id: 'gender', response: S.demographics.gender, rt_ms: rt });
+    log('demographic', { item_id: 'education', response: S.demographics.education, rt_ms: rt });
+    log('phase_end', { details: { name: 'demographics' } });
+    showVideoSingle();
+  };
+}
+
+function showVideoSingle() {
+  setPhase(2);
+  const key = S.videoSingle;
+  log('phase_start', { video: key, task_condition: 'single', details: { name: 'video_single' } });
+  render(`<div class="card"><h1>${esc(t('video_intro_title'))}</h1>${t('video_intro_text')}
+    <div class="actions"><button id="go">${esc(t('start_video_btn'))}</button></div></div>`);
+  setSkip('intro_phase_' + S.phase, () => document.getElementById('go').click());
+  document.getElementById('go').onclick = () => {
+    render(`<div id="vhost" style="width:100%;display:flex;justify-content:center"></div>`);
+    mountVideo(document.getElementById('vhost'), key, 'single', () => {
+      runQuestions(key, 'single', () => {
+        log('phase_end', { video: key, task_condition: 'single', details: { name: 'video_single' } });
+        showMathSingle();
+      });
+    });
+  };
+}
+
+function showMathSingle() {
+  setPhase(3);
+  log('phase_start', { task_condition: 'single', details: { name: 'math_single' } });
+  render(`<div class="card"><h1>${esc(t('math_intro_title'))}</h1>${t('math_intro_text')}
+    <div class="actions"><button id="go">${esc(t('start_math_btn'))}</button></div></div>`);
+  setSkip('intro_phase_' + S.phase, () => document.getElementById('go').click());
+  document.getElementById('go').onclick = () => {
+    render(`<div id="mhost"></div>`);
+    const task = MathTask(document.getElementById('mhost'), 'single');
+    const dur = CONFIG.math.singleDurationSec;
+    task.start();
+    Timer.start(dur);
+    let done = false;
+    const end = reason => {
+      if (done) return; done = true;
+      clearTimeout(limitT); Timer.stop();
+      S.stats.math_single = summarizeMath(task.stop(reason));
+      log('phase_end', { task_condition: 'single', details: { name: 'math_single' } });
+      showMulti();
+    };
+    const limitT = setTimeout(() => end('time_limit'), dur * 1000);
+    setSkip('math_single', () => end('test_skip'));
+  };
+}
+
+function showMulti() {
+  setPhase(4);
+  const key = S.videoMulti;
+  log('phase_start', { video: key, task_condition: 'multi', details: { name: 'multitask' } });
+  render(`<div class="card"><h1>${esc(t('multi_intro_title'))}</h1>${t('multi_intro_text')}
+    <div class="actions"><button id="go">${esc(t('start_multi_btn'))}</button></div></div>`);
+  setSkip('intro_phase_' + S.phase, () => document.getElementById('go').click());
+  document.getElementById('go').onclick = () => {
+    render(`<div class="split"><div class="left" id="vhost"></div><div class="right" id="mhost"></div></div>`, true);
+    const task = MathTask(document.getElementById('mhost'), 'multi');
+    const startedAt = performance.now();
+    mountVideo(document.getElementById('vhost'), key, 'multi', reason => {
+      const st = task.stop('video_end:' + reason);
+      S.stats.math_multi = { ...summarizeMath(st), duration_sec: Math.round((performance.now() - startedAt) / 100) / 10 };
+      runQuestions(key, 'multi', () => {
+        log('phase_end', { video: key, task_condition: 'multi', details: { name: 'multitask' } });
+        showEnd();
+      });
+    });
+    task.start();
+  };
+}
+
+function summarizeMath(st) {
+  return { attempted: st.attempted, correct: st.correct, wrong: st.wrong,
+    mean_rt_ms: st.attempted ? Math.round(st.rt_sum / st.attempted) : '' };
+}
+
+function showEnd() {
+  setPhase(5);
+  log('phase_start', { details: { name: 'end' } });
+  const s = S.stats;
+  const summary = {
+    video_single_id: S.videoSingle, video_single_correct: s.video_single?.correct ?? '',
+    video_multi_id: S.videoMulti,   video_multi_correct: s.video_multi?.correct ?? '',
+    math_single_attempted: s.math_single?.attempted ?? '', math_single_correct: s.math_single?.correct ?? '',
+    math_single_wrong: s.math_single?.wrong ?? '', math_single_mean_rt_ms: s.math_single?.mean_rt_ms ?? '',
+    math_multi_attempted: s.math_multi?.attempted ?? '', math_multi_correct: s.math_multi?.correct ?? '',
+    math_multi_wrong: s.math_multi?.wrong ?? '', math_multi_mean_rt_ms: s.math_multi?.mean_rt_ms ?? '',
+    math_multi_duration_sec: s.math_multi?.duration_sec ?? '',
+  };
+  S.summary = summary;
+  for (const k in summary) log('summary', { item_id: k, response: summary[k] });
+  log('experiment_end', { details: { condition_source: S.conditionSource, fast_mode: FAST } });
+  S.active = false;
+  closeModal();
+  exitFullscreen();
+
+  const vs = s.video_single, vm = s.video_multi, ms = s.math_single, mm = s.math_multi;
+  const dash = '–';
+  const sec = ms_ => ms_ === '' || ms_ == null ? dash : (ms_ / 1000).toFixed(1) + ' ' + t('results_sec');
+  const rows = [
+    [t('results_video'), vs ? `${vs.correct} / ${vs.n}` : dash, vm ? `${vm.correct} / ${vm.n}` : dash],
+    [t('results_math_correct'), ms ? ms.correct : dash, mm ? mm.correct : dash],
+    [t('results_math_wrong'), ms ? ms.wrong : dash, mm ? mm.wrong : dash],
+    [t('results_math_rt'), sec(ms?.mean_rt_ms), sec(mm?.mean_rt_ms)],
+  ];
+  const resultsHtml = `<h2>${esc(t('results_title'))}</h2>
+    <table class="results"><thead><tr><th>${esc(t('results_task'))}</th><th>${esc(t('results_alone'))}</th>
+      <th>${esc(t('results_multi'))}</th></tr></thead>
+      <tbody>${rows.map(r => `<tr><td>${esc(r[0])}</td><td>${esc(r[1])}</td><td>${esc(r[2])}</td></tr>`).join('')}</tbody></table>`;
+
+  render(`<div class="card"><h1>${esc(t('end_title'))}</h1>${t('end_text')}
+    ${resultsHtml}
+    <h2>${esc(t('debrief_title'))}</h2>${t('debrief_text')}
+    <h2>${esc(t('researcher_title'))}</h2>
+    <p class="muted">ID: <b>${esc(S.pid)}</b> · condition ${S.condition} (${S.conditionSource})${FAST ? ' · TEST MODE' : ''} · ${S.events.length} events</p>
+    <div class="actions"><button id="csv">${esc(t('download_csv'))}</button></div></div>`);
+  const stamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-');
+  document.getElementById('csv').onclick = () => download(`multitask_${S.pid}_${stamp}.csv`, exportCSV(), 'text/csv;charset=utf-8');
+}
+
+/* =====================================================================
+   EXPORT
+   ===================================================================== */
+function exportCSV() {
+  const cell = v => {
+    const s = v == null ? '' : String(v);
+    return /[",\n\r;]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+  };
+  const lines = [COLS.join(',')].concat(S.events.map(ev => COLS.map(c => cell(ev[c])).join(',')));
+  return '﻿' + lines.join('\r\n');   // BOM so Excel reads õ/ä/ö/ü correctly
+}
+function exportJSON() {
+  return {
+    participant_id: S.pid, condition: S.condition, condition_source: S.conditionSource, language: S.lang,
+    video_single: S.videoSingle, video_multi: S.videoMulti, fast_mode: FAST,
+    started_at: S.startedAt, user_agent: navigator.userAgent,
+    screen: { width: screen.width, height: screen.height, dpr: window.devicePixelRatio },
+    demographics: S.demographics || null, summary: S.summary || null, events: S.events,
+  };
+}
+function download(name, content, type) {
+  const url = URL.createObjectURL(new Blob([content], { type }));
+  const a = document.createElement('a');
+  a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 2000);
+  log('data_download', { response: name });
+}
+
+/* =====================================================================
+   BOOT
+   ===================================================================== */
+log('session_init', { details: { condition_source: S.conditionSource, video_single: S.videoSingle,
+  video_multi: S.videoMulti, fast_mode: FAST, user_agent: navigator.userAgent,
+  viewport: `${innerWidth}x${innerHeight}`, protocol: location.protocol } });
+showStart();
+</script>
+</body>
+</html>
