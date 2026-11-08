@@ -56,9 +56,11 @@ Settings:
 
 | Where | What |
 |---|---|
-| Apps Script → Project Settings → **Script properties** | `RECIPIENT` (your Gmail address) and `TOKEN` (a secret word). The email address is stored only here. |
-| `experiment.html` → `CONFIG.upload` | `url` = the Apps Script "Web app URL"; `token` = the same word as `TOKEN`. These are public because the page is on GitHub Pages. |
-| `.env` (not in git) | Your own reference copy of `RECIPIENT` and `TOKEN` |
+| Apps Script → Project Settings → **Script properties** | `RECIPIENT` (your Gmail address). The email address is stored only here. |
+| `experiment.html` → `CONFIG.upload.url` | The Apps Script "Web app URL" (public, like the rest of the page) |
+| `.env` (not in git) | Your own reference copy of `RECIPIENT` and `UPLOAD_URL` |
+
+There's no secret token, because a token in a public page wouldn't protect anything. Instead, the script accepts only real experiment CSVs (checked by file name, column names and a 2 MB limit) and sends at most 30 emails per hour.
 
 Setup is described at the top of `email_apps_script.gs`. Use your personal Google account, not your work one.
 

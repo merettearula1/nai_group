@@ -296,11 +296,12 @@ const CONFIG = {
 
   /* Send the CSV automatically when the end screen appears (to a Google Apps Script web app that emails it
      and saves a copy to Google Drive). Setup: see email_apps_script.gs and README.
-     The page is published on GitHub Pages, so url and token are written here and are public. The recipient
-     email address is NOT here; it is only in the Apps Script's Script properties. Empty url = sending is off. */
+     The page is public (GitHub Pages), so no secrets are kept here. The recipient email address is only in the
+     Apps Script's Script properties; the script accepts only experiment CSVs and limits emails per hour.
+     Empty url = sending is off. */
   upload: {
-    url: '',                 // Apps Script "Web app URL" (https://script.google.com/macros/s/.../exec)
-    token: '',               // the same word as TOKEN in the Apps Script's Script properties
+    url: 'https://script.google.com/macros/s/AKfycbxJe2In3dM_YiXzInbuPmtHRlREKbAcywUtbLneDBb1OO5Foq0RP-z9cpKEk65DTl7l/exec',
+                             // ↑ Apps Script "Web app URL"; '' = sending off
   },
 
   storageKeyPrefix: 'multitask_',
@@ -358,8 +359,6 @@ const CONFIG = {
       results_math_wrong: 'Valesti lahendatud arvutusülesanded',
       results_math_rt: 'Keskmine aeg ülesande kohta',
       results_sec: 's',
-      debrief_title: 'Uuringu eesmärk',
-      debrief_text: '<p>Selles uuringus võrdlesime, kuidas inimesed sooritavad video mõistmise ja arvutamise ülesandeid eraldi ning samaaegselt. Varasemate uuringute põhjal eeldame, et kahe ülesande samaaegsel tegemisel on sooritus aeglasem ja ebatäpsem. Videote järjekord valiti juhuslikult.</p><p>Palun ärge rääkige uuringu sisust teistele võimalikele osalejatele enne andmekogumise lõppu.</p>',
       researcher_title: 'Uurijale',
       download_csv: 'Laadi alla CSV',
       upload_sending: 'Andmete saatmine e-posti…',
@@ -425,8 +424,6 @@ const CONFIG = {
       results_math_wrong: 'Arithmetic problems answered wrong',
       results_math_rt: 'Average time per problem',
       results_sec: 's',
-      debrief_title: 'About this study',
-      debrief_text: '<p>In this study we compared how people perform a video comprehension task and an arithmetic task separately and at the same time. Based on earlier research, we expect performance to be slower and less accurate when both tasks are done together. The order of the videos was chosen at random.</p><p>Please do not discuss the study with other potential participants until data collection is over.</p>',
       researcher_title: 'For the researcher',
       download_csv: 'Download CSV',
       upload_sending: 'Sending data by email…',
@@ -1298,7 +1295,6 @@ function showEnd() {
 
   render(`<div class="card"><h1>${esc(t('end_title'))}</h1>${t('end_text')}
     ${resultsHtml}
-    <h2>${esc(t('debrief_title'))}</h2>${t('debrief_text')}
     <h2>${esc(t('researcher_title'))}</h2>
     <p class="muted">ID: <b>${esc(S.pid)}</b> · condition ${S.condition} (${S.conditionSource}) · math ${S.mathSingle} alone / ${S.mathMulti} multi (${S.mathSource})${FAST ? ' · TEST MODE' : ''} · ${S.events.length} events</p>
     <p id="upStatus" class="muted" hidden></p>
@@ -1324,7 +1320,7 @@ async function uploadCSV(fileName) {
     st.style.color = isErr ? 'var(--err)' : ''; if (retry) retry.hidden = !isErr; if (dl) dl.hidden = !isErr; };
   show('upload_sending');
   log('data_upload_start', { response: fileName });
-  const body = JSON.stringify({ token: CONFIG.upload.token, filename: fileName, participant_id: S.pid,
+  const body = JSON.stringify({ filename: fileName, participant_id: S.pid,
     condition: S.condition, math_single_list: S.mathSingle, csv: exportCSV() });
   try {
     // text/plain avoids a CORS preflight, which Apps Script does not answer.

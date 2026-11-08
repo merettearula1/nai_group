@@ -9,34 +9,52 @@
  *      Go to https://script.google.com → New project, paste this whole file.
  *      The script runs as the account that deploys it: mail is sent from and to that Gmail,
  *      and the Drive copies go to that account's Google Drive.
- *   2. Project Settings (gear icon) → Script properties → add two properties, values from .env:
+ *   2. Project Settings (gear icon) → Script properties → add one property:
  *        RECIPIENT = (your Gmail address)
- *        TOKEN     = (the TOKEN value in .env)
  *      No personal details are written in this file, so it is safe to commit to git.
+ *      There is no secret token: the page is public, so a token in it would not protect anything.
+ *      Instead the script only accepts real experiment CSVs and limits emails per hour (below).
  *   3. Deploy → New deployment → type "Web app".
  *        Execute as: Me    Who has access: Anyone
  *      Authorise when asked (Google warns because it is your own unverified script:
  *      Advanced → Go to project → Allow).
- *   4. Copy the "Web app URL" into UPLOAD_URL in .env (experiment.html reads .env when it
- *      runs through http://localhost:8000).
+ *   4. Copy the "Web app URL" into CONFIG.upload.url in experiment.html.
+ *   After changing this code later: Deploy → Manage deployments → edit (pencil) → Version: New version
+ *   → Deploy. The Web app URL stays the same.
  *
  * Limits (free Google account): about 100 emails per day.
  */
 
-// RECIPIENT and TOKEN come from Project Settings → Script properties (see step 2), not from this file.
+// RECIPIENT comes from Project Settings → Script properties (see step 2), not from this file.
 const PROPS = PropertiesService.getScriptProperties();
 const FOLDER_NAME = 'multitask_data';           // Drive folder for copies of all files
+const MAX_PER_HOUR = 30;                        // emails per hour; more are rejected (protects your inbox)
+const MAX_BYTES = 2 * 1024 * 1024;              // largest accepted CSV
+const CSV_HEADER = 'participant_id,condition,math_single_list,';   // how experiment CSVs start
 
 function doPost(e) {
   try {
-    const RECIPIENT = PROPS.getProperty('RECIPIENT'), TOKEN = PROPS.getProperty('TOKEN');
-    if (!RECIPIENT || !TOKEN) return reply({ ok: false, error: 'Script properties RECIPIENT / TOKEN not set' });
+    const RECIPIENT = PROPS.getProperty('RECIPIENT');
+    if (!RECIPIENT) return reply({ ok: false, error: 'Script property RECIPIENT not set' });
+    if (!e.postData || e.postData.contents.length > MAX_BYTES) return reply({ ok: false, error: 'too large' });
     const d = JSON.parse(e.postData.contents);
-    if (d.token !== TOKEN) return reply({ ok: false, error: 'wrong token' });
-    if (!d.csv || !d.filename) return reply({ ok: false, error: 'no data' });
 
-    const name = String(d.filename).replace(/[^\w.\-]/g, '_');
-    const blob = Utilities.newBlob(d.csv, 'text/csv', name);
+    // Accept only real experiment data.
+    const csv = String(d.csv || '').replace(/^\uFEFF/, '');
+    if (!/^multitask_[\w-]+\.csv$/.test(String(d.filename || ''))) return reply({ ok: false, error: 'bad filename' });
+    if (!csv.startsWith(CSV_HEADER)) return reply({ ok: false, error: 'not experiment data' });
+
+    // Rate limit: at most MAX_PER_HOUR emails per hour.
+    const lock = LockService.getScriptLock(); lock.waitLock(10000);
+    const cache = CacheService.getScriptCache();
+    const key = 'n_' + Utilities.formatDate(new Date(), 'UTC', 'yyyyMMddHH');
+    const n = Number(cache.get(key) || 0);
+    if (n >= MAX_PER_HOUR) { lock.releaseLock(); return reply({ ok: false, error: 'rate limit, try again later' }); }
+    cache.put(key, String(n + 1), 3700);
+    lock.releaseLock();
+
+    const name = String(d.filename);
+    const blob = Utilities.newBlob(d.csv, 'text/csv', name);   // original text incl. BOM (Excel)
 
     // 1) Copy in Google Drive
     getFolder().createFile(blob);
