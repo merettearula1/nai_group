@@ -4,11 +4,16 @@ Everything is in one file, `experiment.html`. It runs in the browser and sends n
 
 ## Running it
 
-Open `experiment.html` in Chrome or Firefox. If you use YouTube or ERR videos, serve the file over http instead:
+**Participants:** send them the GitHub Pages link
+`https://merettearula1.github.io/nai_group/` (it redirects to `experiment.html`).
+Ask them to use a computer, not a phone, with Chrome, Edge or Firefox.
 
+**Locally:**
 ```bash
-python3 -m http.server 8000      # then open http://localhost:8000/experiment.html
+python3 -m http.server 8000 --bind 127.0.0.1   # then open http://localhost:8000/experiment.html
 ```
+
+Before the first video there's a short **"Videopleieri ettevalmistus"** step. It shows ERR's page so the participant can accept ERR's cookie notice; otherwise the notice would cover the cropped, locked player. It's logged as `screen` (`player_setup`) and `player_setup_done`.
 
 ### URL parameters
 
@@ -42,6 +47,22 @@ P04  ?pid=P04&condition=2&math=A
 | 5 | End screen: results, debrief, CSV download |
 
 Math problems come from two fixed lists, A and B. Each list has 50 problems with three numbers and only + and −, shown in the same order to everyone. If a participant reaches the end of a list, it starts again from problem 1. The lists are in `CONFIG.math.fixedProblems`.
+
+## Sending data by email
+
+When the end screen appears, the experiment sends the CSV to a Google Apps Script web app. The script emails it as an attachment and saves a copy in the Google Drive folder `multitask_data`. It's free (about 100 emails a day). The **Download CSV** button stays as a backup, and the end screen shows whether sending worked, with a **Send again** button if it failed.
+
+Settings:
+
+| Where | What |
+|---|---|
+| Apps Script → Project Settings → **Script properties** | `RECIPIENT` (your Gmail address) and `TOKEN` (a secret word). The email address is stored only here. |
+| `experiment.html` → `CONFIG.upload` | `url` = the Apps Script "Web app URL"; `token` = the same word as `TOKEN`. These are public because the page is on GitHub Pages. |
+| `.env` (not in git) | Your own reference copy of `RECIPIENT` and `TOKEN` |
+
+Setup is described at the top of `email_apps_script.gs`. Use your personal Google account, not your work one.
+
+New CSV events: `data_upload_start`, `data_upload_ok`, `data_upload_error` (`details.message`).
 
 ## Saving the data
 

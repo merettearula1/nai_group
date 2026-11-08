@@ -221,6 +221,9 @@ const CONFIG = {
     errLockDelayMs: 400,      // wait after the play click before covering the player (lets the click finish)
     errStartOn: 'click',      // err: 'click' = the timer starts when the participant clicks into the player (play);
                               //      'load'  = the timer starts as soon as the player is shown (use if ERR autoplays)
+    errCookieStep: true,      // err: before the first video, show ERR's page so the participant can accept its
+                              //      cookie notice (otherwise it would cover the cropped, locked player)
+    errCookieView: { x: 360, y: 140, width: 1060, height: 720 },  // part of the page shown (where the notice appears)
     errNoClickTimeoutSec: 30, // err/'click': if no click is detected by then, the timer starts anyway (logged)
     startCheckMs: 2500,       // if playback hasn't started by then, show a "click to start" button
   },
@@ -291,6 +294,15 @@ const CONFIG = {
   // Shown when skipButton is true, or with ?test=1 or ?fast=1 in the URL.
   testing: { skipButton: false },
 
+  /* Send the CSV automatically when the end screen appears (to a Google Apps Script web app that emails it
+     and saves a copy to Google Drive). Setup: see email_apps_script.gs and README.
+     The page is published on GitHub Pages, so url and token are written here and are public. The recipient
+     email address is NOT here; it is only in the Apps Script's Script properties. Empty url = sending is off. */
+  upload: {
+    url: '',                 // Apps Script "Web app URL" (https://script.google.com/macros/s/.../exec)
+    token: '',               // the same word as TOKEN in the Apps Script's Script properties
+  },
+
   storageKeyPrefix: 'multitask_',
 
   text: {
@@ -315,6 +327,8 @@ const CONFIG = {
                   bachelor: 'Bakalaureusekraad', master: 'Magistrikraad', doctoral: 'Doktorikraad' },
       edu_err: 'Palun valige haridustase.',
       continue_btn: 'Jätka',
+      setup_title: 'Videopleieri ettevalmistus',
+      setup_text: '<p>Videod näidatakse ERR-i (Jupiteri) pleieris. Allolevas aknas võib ilmuda ERR-i küpsiste teade – vajutage seal <b>„Nõustun vajalike küpsistega“</b>.</p><p>Kui teadet ei ilmu, vajutage lihtsalt <b>Jätka</b>. Videot siin vaatama ei pea.</p>',
       video_intro_title: 'Video vaatamine',
       video_intro_text: '<p>Järgmisena näete umbes 5-minutilist videot. Vaadake see tähelepanelikult lõpuni – pärast videot vastate selle sisu kohta kuuele küsimusele.</p><p>Videot ei saa peatada ega kerida. Kui video lõpeb, avanevad küsimused automaatselt.</p>',
       start_video_btn: 'Alusta videoga',
@@ -348,6 +362,10 @@ const CONFIG = {
       debrief_text: '<p>Selles uuringus võrdlesime, kuidas inimesed sooritavad video mõistmise ja arvutamise ülesandeid eraldi ning samaaegselt. Varasemate uuringute põhjal eeldame, et kahe ülesande samaaegsel tegemisel on sooritus aeglasem ja ebatäpsem. Videote järjekord valiti juhuslikult.</p><p>Palun ärge rääkige uuringu sisust teistele võimalikele osalejatele enne andmekogumise lõppu.</p>',
       researcher_title: 'Uurijale',
       download_csv: 'Laadi alla CSV',
+      upload_sending: 'Andmete saatmine e-posti…',
+      upload_ok: '✓ Andmed saadeti e-posti ja salvestati Google Drive\'i.',
+      upload_fail: '✗ Saatmine ebaõnnestus. Laadige CSV alla ja proovige uuesti.',
+      upload_retry: 'Saada uuesti',
       fs_title: 'Palun naaske täisekraanile',
       fs_text: '<p>Uuring peab toimuma täisekraanirežiimis.</p>',
       fs_btn: 'Naase täisekraanile',
@@ -376,6 +394,8 @@ const CONFIG = {
                   bachelor: "Bachelor's degree", master: "Master's degree", doctoral: 'Doctoral degree' },
       edu_err: 'Please choose your education level.',
       continue_btn: 'Continue',
+      setup_title: 'Preparing the video player',
+      setup_text: '<p>The videos are shown in the ERR (Jupiter) player. A cookie notice from ERR may appear in the window below – click <b>"Nõustun vajalike küpsistega"</b> (accept necessary cookies).</p><p>If no notice appears, just click <b>Continue</b>. You don\'t need to watch anything here.</p>',
       video_intro_title: 'Watching a video',
       video_intro_text: '<p>Next you will watch a video of about 5 minutes. Watch it carefully to the end. Afterwards you will answer six questions about its content.</p><p>The video cannot be paused or skipped. When it ends, the questions open automatically.</p>',
       start_video_btn: 'Start video',
@@ -409,6 +429,10 @@ const CONFIG = {
       debrief_text: '<p>In this study we compared how people perform a video comprehension task and an arithmetic task separately and at the same time. Based on earlier research, we expect performance to be slower and less accurate when both tasks are done together. The order of the videos was chosen at random.</p><p>Please do not discuss the study with other potential participants until data collection is over.</p>',
       researcher_title: 'For the researcher',
       download_csv: 'Download CSV',
+      upload_sending: 'Sending data by email…',
+      upload_ok: '✓ Data sent by email and saved to Google Drive.',
+      upload_fail: '✗ Sending failed. Download the CSV and try again.',
+      upload_retry: 'Send again',
       fs_title: 'Please return to fullscreen',
       fs_text: '<p>The study must run in fullscreen.</p>',
       fs_btn: 'Return to fullscreen',
@@ -1130,8 +1154,38 @@ function showDemographics() {
     log('demographic', { item_id: 'gender', response: S.demographics.gender, rt_ms: rt });
     log('demographic', { item_id: 'education', response: S.demographics.education, rt_ms: rt });
     log('phase_end', { details: { name: 'demographics' } });
-    showVideoSingle();
+    showPlayerSetup(showVideoSingle);
   };
+}
+
+/** Before the first ERR video: show ERR's page so the participant can accept its cookie notice. */
+function showPlayerSetup(next) {
+  const v = [CONFIG.videos[S.videoSingle], CONFIG.videos[S.videoMulti]].find(x => x && x.type === 'err');
+  if (!v || !CONFIG.video.errCookieStep) return next();
+  const fw = v.crop?.frameWidth || 1778, fh = v.crop?.frameHeight || 1000, cv = CONFIG.video.errCookieView;
+  render(`<div class="card" style="max-width:900px"><h1>${esc(t('setup_title'))}</h1>${t('setup_text')}
+    <div id="setupBox" style="position:relative;width:100%;aspect-ratio:${cv.width}/${cv.height};overflow:hidden;
+      border:1px solid var(--line);border-radius:8px;background:#000"></div>
+    <div class="actions"><button id="go">${esc(t('continue_btn'))}</button></div></div>`);
+  const box = document.getElementById('setupBox');
+  const fr = document.createElement('iframe');
+  fr.src = v.url;
+  Object.assign(fr.style, { position: 'absolute', left: '0', top: '0', border: '0',
+    width: fw + 'px', height: fh + 'px', transformOrigin: '0 0' });
+  box.appendChild(fr);
+  const fit = () => { const sc = box.clientWidth / cv.width;
+    fr.style.transform = `scale(${sc}) translate(${-cv.x}px, ${-cv.y}px)`; };
+  fit();
+  const ro = new ResizeObserver(fit); ro.observe(box);
+  const shownAt = performance.now();
+  log('screen', { details: { screen: 'player_setup', url: v.url } });
+  const go = () => {
+    ro.disconnect(); fr.src = 'about:blank';
+    log('player_setup_done', { rt_ms: Math.round(performance.now() - shownAt) });
+    next();
+  };
+  document.getElementById('go').onclick = go;
+  setSkip('player_setup', go);
 }
 
 function showVideoSingle() {
@@ -1247,9 +1301,38 @@ function showEnd() {
     <h2>${esc(t('debrief_title'))}</h2>${t('debrief_text')}
     <h2>${esc(t('researcher_title'))}</h2>
     <p class="muted">ID: <b>${esc(S.pid)}</b> · condition ${S.condition} (${S.conditionSource}) · math ${S.mathSingle} alone / ${S.mathMulti} multi (${S.mathSource})${FAST ? ' · TEST MODE' : ''} · ${S.events.length} events</p>
-    <div class="actions"><button id="csv">${esc(t('download_csv'))}</button></div></div>`);
+    <p id="upStatus" class="muted" hidden></p>
+    <div class="actions"><button id="csv">${esc(t('download_csv'))}</button>
+    <button id="upRetry" class="secondary" hidden>${esc(t('upload_retry'))}</button></div></div>`);
   const stamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-');
-  document.getElementById('csv').onclick = () => download(`multitask_${S.pid}_${stamp}.csv`, exportCSV(), 'text/csv;charset=utf-8');
+  const fileName = `multitask_${S.pid}_${stamp}.csv`;
+  document.getElementById('csv').onclick = () => download(fileName, exportCSV(), 'text/csv;charset=utf-8');
+  if (CONFIG.upload?.url) {
+    document.getElementById('upRetry').onclick = () => uploadCSV(fileName);
+    uploadCSV(fileName);
+  }
+}
+
+/** Sends the CSV to the Apps Script web app (CONFIG.upload), which emails it and saves it to Drive. */
+async function uploadCSV(fileName) {
+  const st = document.getElementById('upStatus'), retry = document.getElementById('upRetry');
+  const show = (key, isErr) => { if (!st) return; st.hidden = false; st.textContent = t(key);
+    st.style.color = isErr ? 'var(--err)' : ''; if (retry) retry.hidden = !isErr; };
+  show('upload_sending');
+  log('data_upload_start', { response: fileName });
+  const body = JSON.stringify({ token: CONFIG.upload.token, filename: fileName, participant_id: S.pid,
+    condition: S.condition, math_single_list: S.mathSingle, csv: exportCSV() });
+  try {
+    // text/plain avoids a CORS preflight, which Apps Script does not answer.
+    const res = await fetch(CONFIG.upload.url, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body });
+    const out = await res.json().catch(() => ({}));
+    if (!out.ok) throw new Error(out.error || `HTTP ${res.status}`);
+    log('data_upload_ok', { response: fileName });
+    show('upload_ok');
+  } catch (err) {
+    log('data_upload_error', { response: fileName, details: { message: String(err.message || err) } });
+    show('upload_fail', true);
+  }
 }
 
 /* =====================================================================
@@ -1284,6 +1367,7 @@ function download(name, content, type) {
 /* =====================================================================
    BOOT
    ===================================================================== */
+
 log('session_init', { details: { condition_source: S.conditionSource, video_single: S.videoSingle,
   video_multi: S.videoMulti, math_single_list: S.mathSingle, math_multi_list: S.mathMulti,
   math_source: S.mathSource, fast_mode: FAST, user_agent: navigator.userAgent,
