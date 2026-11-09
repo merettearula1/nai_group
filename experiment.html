@@ -221,7 +221,7 @@ const CONFIG = {
     errLockDelayMs: 400,      // wait after the play click before covering the player (lets the click finish)
     errStartOn: 'click',      // err: 'click' = the timer starts when the participant clicks into the player (play);
                               //      'load'  = the timer starts as soon as the player is shown (use if ERR autoplays)
-    errCookieSec: 10,         // err: the first ERR video starts with this many seconds in which a wider part of ERR's
+    errCookieSec: 5,          // err: the first ERR video starts with this many seconds in which a wider part of ERR's
                               //      page is shown, so the participant can accept ERR's cookie notice (in the
                               //      cropped, locked player its buttons can't be reached). 0 = off.
     errCookieView: { x: 250, y: 140, width: 1280, height: 720 },  // part of the page shown then (16:9, where the notice is)
