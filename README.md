@@ -13,7 +13,7 @@ Ask them to use a computer, not a phone, with Chrome, Edge or Firefox.
 python3 -m http.server 8000 --bind 127.0.0.1   # then open http://localhost:8000/experiment.html
 ```
 
-The first video's intro screen ("Video vaatamine") also shows the part of ERR's page where ERR's cookie notice appears, so the participant can accept it before starting; otherwise the notice would cover the cropped, locked player. It's logged as `screen` (`cookie_frame`) and `player_setup_done`.
+The first ERR video starts with a 10-second cookie window. A wider part of ERR's page is shown so the participant can click "Nõustun vajalike küpsistega" in ERR's cookie notice, with a countdown below the video. The player itself is covered then, so ▶ can't be pressed yet. After 10 s the view switches to the cropped, locked player and the participant presses ▶. The second video has no cookie window. Settings: `CONFIG.video.errCookieSec` (0 = off) and `errCookieView`. Logged as `video_cookie_window` (`start` / `end`).
 
 ### URL parameters
 
@@ -160,7 +160,8 @@ No name, email, IP address, location, camera, microphone or keystrokes outside t
 | `video_start` | Video started loading. `details`: type, URL, expected length. |
 | `video_ready` | YouTube player ready |
 | `video_state` | Player state: `response` = `playing` / `paused` / `buffering` / `ended` …. `details.current_time` = position in seconds. |
-| `video_state` = `play_assumed` | ERR video: the participant clicked ▶ (or no click was seen within 30 s). The 4:36 timer starts here. `details`: `trigger` (`player_click` / `no_click_timeout`), `wait_ms` (time from player shown to click), `cut_after_sec` |
+| `video_state` = `play_assumed` | ERR video: the participant clicked ▶ (or no click was seen within 30 s). The 4:36 timer starts here. `details`: `trigger` (`player_click` / `no_click_timeout`), `wait_ms` (time from the player being shown, after the cookie window, to the click), `cut_after_sec` |
+| `video_cookie_window` | ERR, first video only: the 10-second cookie window. `response` = `start` / `end`. `details`: `seconds`, and at the end `clicks` (clicks into ERR's page during the window) |
 | `video_player_focus` | ERR video: participant clicked or focused the player again after it started; focus was taken back |
 | `video_key_blocked` | ERR video: Tab key blocked (it would move focus into the player). `response` = key |
 | `video_manual_start_click` | The video didn't start by itself and the participant clicked "Click to start" |

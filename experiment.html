@@ -221,9 +221,10 @@ const CONFIG = {
     errLockDelayMs: 400,      // wait after the play click before covering the player (lets the click finish)
     errStartOn: 'click',      // err: 'click' = the timer starts when the participant clicks into the player (play);
                               //      'load'  = the timer starts as soon as the player is shown (use if ERR autoplays)
-    errCookieStep: true,      // err: before the first video, show ERR's page so the participant can accept its
-                              //      cookie notice (otherwise it would cover the cropped, locked player)
-    errCookieView: { x: 360, y: 140, width: 1060, height: 720 },  // part of the page shown (where the notice appears)
+    errCookieSec: 10,         // err: the first ERR video starts with this many seconds in which a wider part of ERR's
+                              //      page is shown, so the participant can accept ERR's cookie notice (in the
+                              //      cropped, locked player its buttons can't be reached). 0 = off.
+    errCookieView: { x: 250, y: 140, width: 1280, height: 720 },  // part of the page shown then (16:9, where the notice is)
     errNoClickTimeoutSec: 30, // err/'click': if no click is detected by then, the timer starts anyway (logged)
     startCheckMs: 2500,       // if playback hasn't started by then, show a "click to start" button
   },
@@ -328,7 +329,7 @@ const CONFIG = {
                   bachelor: 'Bakalaureusekraad', master: 'Magistrikraad', doctoral: 'Doktorikraad' },
       edu_err: 'Palun valige haridustase.',
       continue_btn: 'Jätka',
-      cookie_text: '<p><b>Enne alustamist:</b> allolevas aknas võib ilmuda ERR-i küpsiste teade – vajutage seal <b>„Nõustun vajalike küpsistega“</b>. Kui teadet ei ilmu, võite kohe alustada.</p>',
+      err_cookie_hint: 'Kui ilmub ERR-i küpsiste teade, vajutage <b>„Nõustun vajalike küpsistega“</b>. Video avaneb {s} s pärast.',
       video_intro_title: 'Video vaatamine',
       video_intro_text: '<p>Järgmisena näete umbes 5-minutilist videot. Vaadake see tähelepanelikult lõpuni – pärast videot vastate selle sisu kohta kuuele küsimusele.</p><p>Videot ei saa peatada ega kerida. Kui video lõpeb, avanevad küsimused automaatselt.</p>',
       start_video_btn: 'Alusta videoga',
@@ -392,7 +393,7 @@ const CONFIG = {
                   bachelor: "Bachelor's degree", master: "Master's degree", doctoral: 'Doctoral degree' },
       edu_err: 'Please choose your education level.',
       continue_btn: 'Continue',
-      cookie_text: '<p><b>Before you start:</b> a cookie notice from ERR may appear in the window below – click <b>"Nõustun vajalike küpsistega"</b> (accept necessary cookies). If no notice appears, you can start right away.</p>',
+      err_cookie_hint: 'If a cookie notice from ERR appears, click <b>"Nõustun vajalike küpsistega"</b> (accept necessary cookies). The video opens in {s} s.',
       video_intro_title: 'Watching a video',
       video_intro_text: '<p>Next you will watch a video of about 5 minutes. Watch it carefully to the end. Afterwards you will answer six questions about its content.</p><p>The video cannot be paused or skipped. When it ends, the questions open automatically.</p>',
       start_video_btn: 'Start video',
@@ -755,6 +756,10 @@ function mountVideo(host, key, taskCondition, onEnd) {
   } else if (v.type === 'err') {
     const fr = document.createElement('iframe');
     fr.src = v.url;
+    let fit = () => {}, view = null;
+    // First ERR video of the session: start with a few seconds for ERR's cookie notice.
+    const cookieSec = (v.crop && URLP.get('crop') !== '0' && !S.errCookieShown) ? (VC.errCookieSec || 0) : 0;
+    if (cookieSec > 0) { view = VC.errCookieView; S.errCookieShown = true; }
     fr.allow = 'autoplay; fullscreen; encrypted-media';
     fr.setAttribute('allowfullscreen', '');
     inner.appendChild(fr);
@@ -764,23 +769,31 @@ function mountVideo(host, key, taskCondition, onEnd) {
       inner.style.overflow = 'hidden';
       Object.assign(fr.style, { inset: 'auto', left: '0', top: '0', width: c.frameWidth + 'px', height: c.frameHeight + 'px',
         transformOrigin: '0 0' });
-      const fit = () => {
-        const sc = Math.min(inner.clientWidth / c.width, inner.clientHeight / c.height);
-        const ox = (inner.clientWidth - c.width * sc) / 2, oy = (inner.clientHeight - c.height * sc) / 2;
-        fr.style.transform = `translate(${ox}px, ${oy}px) scale(${sc}) translate(${-c.x}px, ${-c.y}px)`;
+      fit = () => {
+        const r = view || c;   // view = wider cookie view during the first seconds, otherwise the player
+        const sc = Math.min(inner.clientWidth / r.width, inner.clientHeight / r.height);
+        const ox = (inner.clientWidth - r.width * sc) / 2, oy = (inner.clientHeight - r.height * sc) / 2;
+        fr.style.transform = `translate(${ox}px, ${oy}px) scale(${sc}) translate(${-r.x}px, ${-r.y}px)`;
+        if (view && lock) {
+          // Cover only the player inside the wider view, so ▶ can't be clicked but the cookie buttons can.
+          const L = ox + (c.x - r.x) * sc, T = oy + (c.y - r.y) * sc;
+          const R = inner.clientWidth - (L + c.width * sc), B = inner.clientHeight - (T + c.height * sc);
+          shield.style.clipPath = `inset(${Math.max(0, T)}px ${Math.max(0, R)}px ${Math.max(0, B)}px ${Math.max(0, L)}px)`;
+        }
       };
-      fit();
-      cropRO = new ResizeObserver(fit); cropRO.observe(inner);
+      cropRO = new ResizeObserver(() => fit()); cropRO.observe(inner);
     }
     const lock = VC.errLockPlayer;
-    if (lock) {
+    const setHole = () => {
       // Transparent cover over the player with a hole in the middle, so only the big ▶ button can be clicked.
       const hw = VC.errPlayHole.w * 50, hh = VC.errPlayHole.h * 50;
       const l = 50 - hw, r = 50 + hw, tp = 50 - hh, b = 50 + hh;
       shield.style.clipPath = `polygon(evenodd, 0% 0%, 100% 0%, 100% 100%, 0% 100%, 0% 0%, ` +
         `${l}% ${tp}%, ${r}% ${tp}%, ${r}% ${b}%, ${l}% ${b}%, ${l}% ${tp}%)`;
-      fr.tabIndex = -1;
-    } else shield.classList.add('passthrough');
+    };
+    if (lock) fr.tabIndex = -1; else shield.classList.add('passthrough');
+    if (!view && lock) setHole();
+    fit();
     // Somewhere outside the player to put keyboard focus (the math input in Phase 4, otherwise this element).
     const parking = document.createElement('div'); parking.tabIndex = -1; parking.style.outline = 'none';
     host.appendChild(parking);
@@ -791,14 +804,14 @@ function mountVideo(host, key, taskCondition, onEnd) {
     };
     const blockTab = e => { if (e.key === 'Tab') { e.preventDefault(); log('video_key_blocked', { ...base, response: 'Tab' }); } };
     if (lock) window.addEventListener('keydown', blockTab, true);
-    note.textContent = t('err_hint'); note.hidden = false;
     // ERR gives no play/ended events, so the clip is cut by a timer of durationSec + errEndBufferSec.
     // In 'click' mode the timer starts when focus moves into the player iframe (= the participant clicked play).
     const playSec = v.durationSec + VC.errEndBufferSec;
-    let clockOn = false, noClickT = null;
+    let clockOn = false, noClickT = null, cookieT = null, cookieClicks = 0, playerShownAt = performance.now();
     // Focus moving into the player iframe = the participant clicked it.
     const onBlur = () => setTimeout(() => {
       if (document.activeElement !== fr || ended) return;
+      if (view) { cookieClicks++; return; }   // cookie seconds: clicks are for the cookie notice
       if (!clockOn) startClock('player_click');
       else log('video_player_focus', { ...base, details: { note: 'focus moved into the player again; taken back' } });
       setTimeout(() => {
@@ -811,16 +824,37 @@ function mountVideo(host, key, taskCondition, onEnd) {
       clockOn = true;
       clearTimeout(noClickT);
       log('video_state', { ...base, response: 'play_assumed',
-        details: { trigger: how, wait_ms: Math.round(performance.now() - mountedAt), cut_after_sec: playSec } });
+        details: { trigger: how, wait_ms: Math.round(performance.now() - playerShownAt), cut_after_sec: playSec } });
       note.hidden = true;
       setFallback(playSec); vTimer(playSec);
     };
     errCleanup = () => { window.removeEventListener('blur', onBlur); window.removeEventListener('keydown', blockTab, true);
-      clearTimeout(noClickT); };
+      clearTimeout(noClickT); clearInterval(cookieT); };
     window.addEventListener('blur', onBlur);   // also catches later attempts to focus the player
-    if (VC.errStartOn === 'click') {
-      noClickT = setTimeout(() => startClock('no_click_timeout'), VC.errNoClickTimeoutSec * 1000);
-    } else startClock('load');
+    const showPlayer = () => {   // switch to the cropped, locked player and wait for the play click
+      playerShownAt = performance.now();
+      note.textContent = t('err_hint'); note.hidden = false;
+      if (VC.errStartOn === 'click') {
+        noClickT = setTimeout(() => startClock('no_click_timeout'), VC.errNoClickTimeoutSec * 1000);
+      } else startClock('load');
+    };
+    if (view) {
+      log('video_cookie_window', { ...base, response: 'start', details: { seconds: cookieSec } });
+      const until = performance.now() + cookieSec * 1000;
+      const tick = () => {
+        const left = Math.ceil((until - performance.now()) / 1000);
+        if (left > 0) { note.innerHTML = t('err_cookie_hint', { s: left }); note.hidden = false; return; }
+        clearInterval(cookieT);
+        if (ended) return;
+        view = null;
+        if (lock) setHole();
+        fit();
+        if (document.activeElement === fr) (parking).focus({ preventScroll: true });
+        log('video_cookie_window', { ...base, response: 'end', details: { clicks: cookieClicks } });
+        showPlayer();
+      };
+      tick(); cookieT = setInterval(tick, 250);
+    } else showPlayer();
   } else if (v.type === 'mp4') {
     const media = document.createElement('video');
     media.src = v.url; media.playsInline = true; media.preload = 'auto';
@@ -1153,45 +1187,14 @@ function showDemographics() {
   };
 }
 
-/** Shows the part of ERR's page where its cookie notice appears, so the participant can accept it before the
-    first video (in the cropped, locked player the notice's buttons cannot be reached). Returns a cleanup
-    function, or null when no ERR video is used. */
-function mountCookieFrame(box) {
-  const v = [CONFIG.videos[S.videoSingle], CONFIG.videos[S.videoMulti]].find(x => x && x.type === 'err');
-  if (!v || !CONFIG.video.errCookieStep || !box) return null;
-  const fw = v.crop?.frameWidth || 1778, fh = v.crop?.frameHeight || 1000, cv = CONFIG.video.errCookieView;
-  Object.assign(box.style, { position: 'relative', width: '100%', aspectRatio: `${cv.width} / ${cv.height}`,
-    overflow: 'hidden', border: '1px solid var(--line)', borderRadius: '8px', background: '#000', marginTop: '8px' });
-  const fr = document.createElement('iframe');
-  fr.src = v.url;
-  Object.assign(fr.style, { position: 'absolute', left: '0', top: '0', border: '0',
-    width: fw + 'px', height: fh + 'px', transformOrigin: '0 0' });
-  box.appendChild(fr);
-  const fit = () => { fr.style.transform = `scale(${box.clientWidth / cv.width}) translate(${-cv.x}px, ${-cv.y}px)`; };
-  fit();
-  const ro = new ResizeObserver(fit); ro.observe(box);
-  const shownAt = performance.now();
-  log('screen', { details: { screen: 'cookie_frame', url: v.url } });
-  return () => {
-    ro.disconnect(); fr.src = 'about:blank';
-    log('player_setup_done', { rt_ms: Math.round(performance.now() - shownAt) });
-  };
-}
-
 function showVideoSingle() {
   setPhase(2);
   const key = S.videoSingle;
   log('phase_start', { video: key, task_condition: 'single', details: { name: 'video_single' } });
-  // First video: the ERR cookie notice is shown on this same screen, above the start button.
-  const withCookies = CONFIG.video.errCookieStep &&
-    [S.videoSingle, S.videoMulti].some(k => CONFIG.videos[k]?.type === 'err');
-  render(`<div class="card"${withCookies ? ' style="max-width:900px"' : ''}><h1>${esc(t('video_intro_title'))}</h1>${t('video_intro_text')}
-    ${withCookies ? t('cookie_text') + '<div id="cookieBox"></div>' : ''}
+  render(`<div class="card"><h1>${esc(t('video_intro_title'))}</h1>${t('video_intro_text')}
     <div class="actions"><button id="go">${esc(t('start_video_btn'))}</button></div></div>`);
-  const closeCookies = withCookies ? mountCookieFrame(document.getElementById('cookieBox')) : null;
   setSkip('intro_phase_' + S.phase, () => document.getElementById('go').click());
   document.getElementById('go').onclick = () => {
-    if (closeCookies) closeCookies();
     render(`<div id="vhost" style="width:100%;display:flex;justify-content:center"></div>`);
     mountVideo(document.getElementById('vhost'), key, 'single', () => {
       runQuestions(key, 'single', () => {
