@@ -207,10 +207,10 @@ const CONFIG = {
       ],
     },
     C: {
-      type: 'youtube',
-      url: 'https://www.youtube.com/watch?v=X1L1Hd3xfrU',   // BBC World Service: How reading changes the way your brain works
-      durationSec: 355,          // 5:55 (fallback only; the YouTube "ended" event ends it)
-      label: 'Video C (YouTube X1L1Hd3xfrU, BBC: How reading changes the way your brain works)',
+      type: 'mp4',
+      url: 'videos/C.mp4',       // BBC World Service: How reading changes the way your brain works (YouTube X1L1Hd3xfrU)
+      durationSec: 355,          // 5:55 (fallback only; the video's "ended" event ends it)
+      label: 'Video C (mp4 of YouTube X1L1Hd3xfrU, BBC: How reading changes the way your brain works)',
       questions: [
         { id: 'C1', difficulty: 'easy',
           text: 'According to the video, is the brain born able to read?',
@@ -263,10 +263,10 @@ const CONFIG = {
       ],
     },
     D: {
-      type: 'youtube',
-      url: 'https://www.youtube.com/watch?v=WSUj3PRvzzg',   // BBC Ideas: Is being bilingual good for your brain?
-      durationSec: 333,          // 5:33 (fallback only; the YouTube "ended" event ends it)
-      label: 'Video D (YouTube WSUj3PRvzzg, BBC Ideas: Is being bilingual good for your brain?)',
+      type: 'mp4',
+      url: 'videos/D.mp4',       // BBC Ideas: Is being bilingual good for your brain? (YouTube WSUj3PRvzzg)
+      durationSec: 333,          // 5:33 (fallback only; the video's "ended" event ends it)
+      label: 'Video D (mp4 of YouTube WSUj3PRvzzg, BBC Ideas: Is being bilingual good for your brain?)',
       questions: [
         { id: 'D1', difficulty: 'easy',
           text: 'What does the video compare learning a new language to?',
@@ -773,7 +773,7 @@ function youtubeId(url) {
 }
 
 /** Mounts a video into `host`. Calls onEnd(reason) exactly once. Returns { destroy }.
-    onPlaying (optional) is called once: for YouTube when the video has loaded and actually starts playing,
+    onPlaying (optional) is called once: for YouTube and mp4 when the video has loaded and actually starts playing,
     for the other types straight away. */
 function mountVideo(host, key, taskCondition, onEnd, onPlaying) {
   let playingFired = false;
@@ -983,6 +983,7 @@ function mountVideo(host, key, taskCondition, onEnd, onPlaying) {
     if (VC.allowPause) media.controls = true;
     inner.appendChild(media);
     media.addEventListener('ended', () => finish('ended_event'));
+    media.addEventListener('playing', firePlaying);
     media.addEventListener('error', () => { log('video_error', { ...base, details: { code: media.error && media.error.code } }); setFallback(v.durationSec); });
     media.addEventListener('pause', () => { if (!VC.allowPause && !ended && !media.ended) media.play().catch(() => {}); });
     media.addEventListener('loadedmetadata', () => { setFallback(media.duration + VC.endGraceSec); vTimer(media.duration); });
@@ -1009,7 +1010,7 @@ function mountVideo(host, key, taskCondition, onEnd, onPlaying) {
   }
 
   setSkip('video_' + taskCondition, () => finish('test_skip'));
-  if (v.type !== 'youtube') firePlaying();
+  if (v.type !== 'youtube' && v.type !== 'mp4') firePlaying();
   return { destroy: () => { ended = true; cleanup(); }, skip: () => finish('test_skip') };
 }
 
@@ -1352,7 +1353,7 @@ function showMulti() {
     render(`<div class="split"><div class="left" id="vhost"></div><div class="right" id="mhost"></div></div>`, true);
     const task = MathTask(document.getElementById('mhost'), 'multi');
     let startedAt = null;
-    // YouTube: the math starts only once the video has loaded and is playing; other video types: straight away.
+    // YouTube / mp4: the math starts only once the video has loaded and is playing; ERR / placeholder: straight away.
     const startMath = () => { if (startedAt !== null) return; startedAt = performance.now(); task.start(); };
     mountVideo(document.getElementById('vhost'), key, 'multi', reason => {
       const st = task.stop('video_end:' + reason);

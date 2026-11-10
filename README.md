@@ -25,7 +25,7 @@ The first ERR video starts with a 10-second cookie window. A wider part of ERR's
 | `fast` | `1` | Test mode: videos last 20 s and a Skip button appears. |
 | `test` | `1` | Skip button only, with normal timings. |
 
-Videos A and B are ERR (Jupiter) clips; videos C and D are YouTube videos (C: BBC World Service, "How reading changes the way your brain works"; D: BBC Ideas, "Is being bilingual good for your brain?").
+Videos A and B are ERR (Jupiter) clips; videos C and D are mp4 files in `videos/` (`C.mp4`, `D.mp4`), made from the YouTube videos (C: BBC World Service, "How reading changes the way your brain works"; D: BBC Ideas, "Is being bilingual good for your brain?").
 
 To get an exact balanced split, rotate through these eight groups:
 
