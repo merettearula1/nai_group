@@ -78,6 +78,7 @@
   /* Math */
   .math { text-align: center; }
   .eq { font-size: 60px; font-variant-numeric: tabular-nums; margin-bottom: 24px; white-space: nowrap; }
+  .eq.wait, .split .eq.wait { font-size: 20px; white-space: normal; color: var(--muted, #666); }
   .math input { font: inherit; font-size: 46px; width: 260px; max-width: 80vw; text-align: center; padding: 8px;
     border: 2px solid #b5b5ae; border-radius: 8px; font-variant-numeric: tabular-nums; }
   .math input:focus { outline: none; border-color: var(--accent); }
@@ -452,6 +453,7 @@ const CONFIG = {
       math_intro_text: '<p>Järgmisena näete ükshaaval lihtsaid arvutusülesandeid. Kirjutage vastus ja vajutage <b>Enter</b> – kohe ilmub uus ülesanne.</p><p>Lahendage võimalikult palju ülesandeid võimalikult täpselt. Ülesanne kestab 5 minutit ja lõpeb automaatselt.</p>',
       start_math_btn: 'Alusta arvutamisega',
       math_hint: 'Kirjutage vastus ja vajutage Enter',
+      math_wait: 'Arvutusülesanded algavad, kui video käivitub.',
       multi_intro_title: 'Video ja arvutamine korraga',
       multi_intro_text: '<p>Nüüd teete mõlemat ülesannet korraga.</p><p><b>Vasakul</b> mängib uus video. Jälgige seda tähelepanelikult – pärast videot vastate selle kohta kuuele küsimusele.</p><p><b>Paremal</b> lahendage samal ajal arvutusülesandeid nagu varem: kirjutage vastus ja vajutage Enter.</p><p>Püüdke teha mõlemat võimalikult hästi. Kui video lõpeb, lõpeb ka arvutamine.</p>',
       start_multi_btn: 'Alusta',
@@ -516,6 +518,7 @@ const CONFIG = {
       math_intro_text: '<p>Next you will see simple arithmetic problems, one at a time. Type your answer and press <b>Enter</b>. A new problem appears straight away.</p><p>Solve as many problems as you can, as accurately as you can. This task lasts 5 minutes and ends automatically.</p>',
       start_math_btn: 'Start arithmetic',
       math_hint: 'Type your answer and press Enter',
+      math_wait: 'The arithmetic starts when the video starts playing.',
       multi_intro_title: 'Video and arithmetic together',
       multi_intro_text: '<p>Now you will do both tasks at the same time.</p><p>On the <b>left</b>, a new video will play. Watch it carefully, because afterwards you will answer six questions about it.</p><p>On the <b>right</b>, solve arithmetic problems as before: type your answer and press Enter.</p><p>Try to do both as well as you can. When the video ends, the arithmetic task ends too.</p>',
       start_multi_btn: 'Start',
@@ -761,8 +764,12 @@ function youtubeId(url) {
   return m ? m[1] : (/^[\w-]{11}$/.test(url) ? url : null);
 }
 
-/** Mounts a video into `host`. Calls onEnd(reason) exactly once. Returns { destroy }. */
-function mountVideo(host, key, taskCondition, onEnd) {
+/** Mounts a video into `host`. Calls onEnd(reason) exactly once. Returns { destroy }.
+    onPlaying (optional) is called once: for YouTube when the video has loaded and actually starts playing,
+    for the other types straight away. */
+function mountVideo(host, key, taskCondition, onEnd, onPlaying) {
+  let playingFired = false;
+  const firePlaying = () => { if (playingFired || !onPlaying) return; playingFired = true; onPlaying(); };
   const v = CONFIG.videos[key];
   const VC = CONFIG.video;
   let ended = false, fallbackT = null, capT = null, ticker = null, startCheckT = null, ytPlayer = null, errCleanup = null, cropRO = null;
@@ -851,6 +858,7 @@ function mountVideo(host, key, taskCondition, onEnd) {
               firstPlay = false;
               const dur = (v.endSec || ytPlayer.getDuration()) - ytPlayer.getCurrentTime();
               if (dur > 0) { setFallback(dur + VC.endGraceSec); vTimer(dur); }
+              firePlaying();
             }
             if (e.data === YT.PlayerState.ENDED) finish('ended_event');
             if (e.data === YT.PlayerState.PAUSED && !VC.allowPause && !ended) e.target.playVideo();
@@ -993,6 +1001,7 @@ function mountVideo(host, key, taskCondition, onEnd) {
   }
 
   setSkip('video_' + taskCondition, () => finish('test_skip'));
+  if (v.type !== 'youtube') firePlaying();
   return { destroy: () => { ended = true; cleanup(); }, skip: () => finish('test_skip') };
 }
 
@@ -1040,8 +1049,8 @@ function parseEquation(str) {
 }
 
 function MathTask(host, taskCondition) {
-  host.innerHTML = `<div class="math"><div class="eq" aria-live="polite"></div>
-    <input type="text" inputmode="numeric" autocomplete="off" autocorrect="off" spellcheck="false" aria-label="answer">
+  host.innerHTML = `<div class="math"><div class="eq wait" aria-live="polite">${esc(t('math_wait'))}</div>
+    <input type="text" inputmode="numeric" autocomplete="off" autocorrect="off" spellcheck="false" aria-label="answer" disabled>
     <div class="hint">${esc(t('math_hint'))}</div></div>`;
   const eqEl = host.querySelector('.eq');
   const inp = host.querySelector('input');
@@ -1095,7 +1104,7 @@ function MathTask(host, taskCondition) {
   return {
     stats,
     start() {
-      running = true; next(); inp.focus();
+      running = true; eqEl.classList.remove('wait'); inp.disabled = false; next(); inp.focus();
       focusT = setInterval(keepFocus, 250);
       S.onModalClose = keepFocus;
       log('task_start', { task_condition: taskCondition, details: { task: 'math', list: list ? listKey : 'random' } });
@@ -1334,16 +1343,17 @@ function showMulti() {
   document.getElementById('go').onclick = () => {
     render(`<div class="split"><div class="left" id="vhost"></div><div class="right" id="mhost"></div></div>`, true);
     const task = MathTask(document.getElementById('mhost'), 'multi');
-    const startedAt = performance.now();
+    let startedAt = null;
+    // YouTube: the math starts only once the video has loaded and is playing; other video types: straight away.
+    const startMath = () => { if (startedAt !== null) return; startedAt = performance.now(); task.start(); };
     mountVideo(document.getElementById('vhost'), key, 'multi', reason => {
       const st = task.stop('video_end:' + reason);
-      S.stats.math_multi = { ...summarizeMath(st), duration_sec: Math.round((performance.now() - startedAt) / 100) / 10 };
+      S.stats.math_multi = { ...summarizeMath(st), duration_sec: startedAt === null ? 0 : Math.round((performance.now() - startedAt) / 100) / 10 };
       runQuestions(key, 'multi', () => {
         log('phase_end', { video: key, task_condition: 'multi', details: { name: 'multitask' } });
         showEnd();
       });
-    });
-    task.start();
+    }, startMath);
   };
 }
 
