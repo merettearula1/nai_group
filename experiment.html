@@ -555,6 +555,8 @@ const CONFIG = {
 const URLP = new URLSearchParams(location.search);
 const FAST = URLP.get('fast') === '1';
 const SKIP_ON = CONFIG.testing.skipButton || URLP.get('test') === '1' || FAST;
+// Test run (?test=1 or ?fast=1): the data is still sent, but saved in the Drive subfolder multitask_data/test.
+const IS_TEST = URLP.get('test') === '1' || FAST;
 const $app = document.getElementById('app');
 const $phase = document.getElementById('phaseLabel');
 const $modal = document.getElementById('modal');
@@ -1427,7 +1429,7 @@ async function uploadCSV(fileName) {
   show('upload_sending');
   log('data_upload_start', { response: fileName });
   const body = JSON.stringify({ filename: fileName, participant_id: S.pid,
-    condition: S.condition, math_single_list: S.mathSingle, csv: exportCSV() });
+    condition: S.condition, math_single_list: S.mathSingle, test: IS_TEST, csv: exportCSV() });
   try {
     // text/plain avoids a CORS preflight, which Apps Script does not answer.
     const res = await fetch(CONFIG.upload.url, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body });

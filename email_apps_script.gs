@@ -28,6 +28,7 @@
 // RECIPIENT comes from Project Settings → Script properties (see step 2), not from this file.
 const PROPS = PropertiesService.getScriptProperties();
 const FOLDER_NAME = 'multitask_data';           // Drive folder for copies of all files
+const TEST_FOLDER_NAME = 'test';                // subfolder of FOLDER_NAME for test runs (?test=1 / ?fast=1 links)
 const MAX_PER_HOUR = 30;                        // emails per hour; more are rejected (protects your inbox)
 const MAX_BYTES = 2 * 1024 * 1024;              // largest accepted CSV
 const CSV_HEADER = 'participant_id,condition,math_single_list,';   // how experiment CSVs start
@@ -54,20 +55,23 @@ function doPost(e) {
     lock.releaseLock();
 
     const name = String(d.filename);
+    const isTest = d.test === true;
     const blob = Utilities.newBlob(d.csv, 'text/csv', name);   // original text incl. BOM (Excel)
 
-    // 1) Copy in Google Drive
-    getFolder().createFile(blob);
+    // 1) Copy in Google Drive (test runs go to multitask_data/test)
+    (isTest ? getTestFolder() : getFolder()).createFile(blob);
 
     // 2) Email with the CSV attached
     MailApp.sendEmail({
       to: RECIPIENT,
-      subject: 'Multitask experiment: ' + d.participant_id,
+      subject: (isTest ? '[TEST] ' : '') + 'Multitask experiment: ' + d.participant_id,
       body: 'Participant: ' + d.participant_id +
             '\nCondition: ' + d.condition +
             '\nMath list alone: ' + d.math_single_list +
             '\nFile: ' + name +
-            '\n\nThe CSV is attached and also saved in Google Drive folder "' + FOLDER_NAME + '".',
+            (isTest ? '\nTEST RUN (?test=1 / ?fast=1 link)' : '') +
+            '\n\nThe CSV is attached and also saved in Google Drive folder "' +
+            (isTest ? FOLDER_NAME + '/' + TEST_FOLDER_NAME : FOLDER_NAME) + '".',
       attachments: [blob],
     });
     return reply({ ok: true });
@@ -79,6 +83,12 @@ function doPost(e) {
 function getFolder() {
   const it = DriveApp.getFoldersByName(FOLDER_NAME);
   return it.hasNext() ? it.next() : DriveApp.createFolder(FOLDER_NAME);
+}
+
+function getTestFolder() {
+  const parent = getFolder();
+  const it = parent.getFoldersByName(TEST_FOLDER_NAME);
+  return it.hasNext() ? it.next() : parent.createFolder(TEST_FOLDER_NAME);
 }
 
 function reply(obj) {

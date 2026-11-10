@@ -55,7 +55,7 @@ Math problems come from two fixed lists, A and B. Each list has 50 problems with
 
 ## Sending data by email
 
-When the end screen appears, the experiment sends the CSV to a Google Apps Script web app. The script emails it as an attachment and saves a copy in the Google Drive folder `multitask_data`. It's free (about 100 emails a day). The **Download CSV** button stays as a backup, and the end screen shows whether sending worked, with a **Send again** button if it failed.
+When the end screen appears, the experiment sends the CSV to a Google Apps Script web app. The script emails it as an attachment and saves a copy in the Google Drive folder `multitask_data`. Runs from test links (`?test=1` or `?fast=1`) are saved in the subfolder `multitask_data/test` instead, and their email subject starts with `[TEST]`. It's free (about 100 emails a day). The **Download CSV** button stays as a backup, and the end screen shows whether sending worked, with a **Send again** button if it failed.
 
 Settings:
 
