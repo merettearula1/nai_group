@@ -17,9 +17,6 @@
   body:fullscreen, body:-webkit-full-screen { background: var(--bg); }
   #topLeft { position: fixed; top: 6px; left: 16px; z-index: 5; display: flex; align-items: center; gap: 14px; }
   #phaseLabel { font-size: 15px; color: var(--muted); }
-  #langToggle { position: fixed; top: 10px; right: 16px; z-index: 5; display: flex; gap: 6px; }
-  #langToggle button { padding: 4px 12px; font-size: 15px; background: var(--card); color: var(--fg); border-color: var(--line); }
-  #langToggle button[aria-pressed="true"] { background: var(--accent); color: var(--accent-fg); border-color: var(--accent); }
   #app { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 56px 16px 24px; }
   #app.full { padding: 44px 0 0; align-items: stretch; }
   .card { background: var(--card); border: 1px solid var(--line); border-radius: 10px;
@@ -109,7 +106,6 @@
 </head>
 <body>
 <div id="topLeft"><div id="phaseLabel"></div><div id="timer" hidden aria-live="off"></div></div>
-<div id="langToggle" hidden></div>
 <main id="app"></main>
 <button id="skipBtn" type="button" hidden>Skip ⏭ (test)</button>
 <div id="modal" hidden></div>
@@ -119,9 +115,8 @@
    CONFIG — all editable values live here
    ===================================================================== */
 const CONFIG = {
-  languages: ['et', 'en'],
-  defaultLanguage: 'et',
-  showLanguageToggle: true,          // toggle shown on the start screen only
+  // The language is fixed by the condition (see CONDITIONS): conditions 1–2 (videos A, B) are Estonian,
+  // conditions 3–4 (videos C, D) are English. There is no language switch.
 
   /* Video types:
      - 'youtube'     : url = any YouTube link or 11-char video ID. Optional startSec / endSec to cut a clip.
@@ -204,6 +199,118 @@ const CONFIG = {
           correct: 0 },
       ],
     },
+    C: {
+      type: 'youtube',
+      url: 'https://www.youtube.com/watch?v=X1L1Hd3xfrU',   // BBC World Service: How reading changes the way your brain works
+      durationSec: 355,          // 5:55 (fallback only; the YouTube "ended" event ends it)
+      label: 'Video C (YouTube X1L1Hd3xfrU, BBC: How reading changes the way your brain works)',
+      questions: [
+        { id: 'C1', difficulty: 'easy',
+          text: 'According to the video, is the brain born able to read?',
+          options: [
+            'Yes, just as it is born able to see and make sounds',
+            'No, it builds a reading network by borrowing other brain areas',
+            'Only if children hear language from birth',
+            'Only for writing systems based on an alphabet' ],
+          correct: 1 },
+        { id: 'C2', difficulty: 'easy',
+          text: 'What does the video advise parents to do about new technologies?',
+          options: [
+            'Keep children off screens completely until their teens',
+            'Allow only educational apps, with a parent watching',
+            'Teach children to spot misinformation online',
+            'Immerse children in reading, and read to them and show they love it' ],
+          correct: 3 },
+        { id: 'C3', difficulty: 'intermediate',
+          text: 'How does reading Chinese characters differ in the brain from reading English?',
+          options: [
+            'Only one side of the brain is used instead of both',
+            'Hearing areas do more of the work, because the sounds of the words matter',
+            'Areas linked to emotion and empathy do more of the work',
+            'Areas for visual memory and visual association do more of the work' ],
+          correct: 3 },
+        { id: 'C4', difficulty: 'intermediate',
+          text: 'What does the video say happens when we read on phones and tablets?',
+          options: [
+            'We read more deeply, because text is easier to search',
+            'We remember more, because pictures support the words',
+            'We tend to skim, which makes us more open to misinformation',
+            'We read more slowly, because the screen tires our eyes' ],
+          correct: 2 },
+        { id: 'C5', difficulty: 'difficult',
+          text: 'Why can a reader literally feel a character’s nervousness or pain in their gut?',
+          options: [
+            'The brain area that handles gut movement and nausea also takes part in empathy',
+            'Tense scenes release stress hormones that upset digestion',
+            'The vision areas used in reading connect directly to the nerves of the stomach',
+            'Feeling with characters triggers the same reflexes as real danger' ],
+          correct: 0 },
+        { id: 'C6', difficulty: 'difficult',
+          text: 'What did the case of the bilingual stroke patient show?',
+          options: [
+            'Both languages rely on one shared reading circuit, so both were damaged',
+            'He lost his English, because alphabets depend on fragile hearing areas',
+            'Reading ability returns faster in a person’s second language',
+            'Each writing system shapes its own circuit, so only Chinese reading failed' ],
+          correct: 3 },
+      ],
+    },
+    D: {
+      type: 'youtube',
+      url: 'https://www.youtube.com/watch?v=WSUj3PRvzzg',   // BBC Ideas: Is being bilingual good for your brain?
+      durationSec: 333,          // 5:33 (fallback only; the YouTube "ended" event ends it)
+      label: 'Video D (YouTube WSUj3PRvzzg, BBC Ideas: Is being bilingual good for your brain?)',
+      questions: [
+        { id: 'D1', difficulty: 'easy',
+          text: 'What does the video compare learning a new language to?',
+          options: [
+            'Solving a puzzle every day',
+            'Learning to play an instrument',
+            'Going to the gym every day',
+            'Training for a marathon' ],
+          correct: 2 },
+        { id: 'D2', difficulty: 'easy',
+          text: 'In which language do people tend to react more emotionally?',
+          options: [
+            'Their first language',
+            'Their second language',
+            'The language they use most at work',
+            'The language they learned at school' ],
+          correct: 0 },
+        { id: 'D3', difficulty: 'intermediate',
+          text: 'How does the video define cognitive reserve?',
+          options: [
+            'The extra memory space bilinguals have for storing vocabulary',
+            'Brain areas that stay unused until they are needed after an injury',
+            'The ability to switch between languages without any effort',
+            'A store of thinking abilities that protects against losses from ageing and disease' ],
+          correct: 3 },
+        { id: 'D4', difficulty: 'intermediate',
+          text: 'Why does being bilingual exercise the brain?',
+          options: [
+            'Bilinguals translate each sentence in their head before speaking',
+            'All their languages are active at once, so the brain must hold one back and switch between them',
+            'Each language is handled by a different side of the brain',
+            'Bilinguals must memorise twice as many words as monolinguals' ],
+          correct: 1 },
+        { id: 'D5', difficulty: 'difficult',
+          text: 'Why can learning a language later in life bring greater benefits?',
+          options: [
+            'Adults pick up new sounds more easily than children',
+            'Adults already have cognitive reserve to build on',
+            'Adults must rewire existing brain networks, which takes more effort',
+            'Adults usually learn at work or university, where they think more rationally' ],
+          correct: 2 },
+        { id: 'D6', difficulty: 'difficult',
+          text: 'What did the children’s brain-scan study find?',
+          options: [
+            'Children who learned two languages from birth had the strongest brain connections at rest',
+            'Children who learned their second language later had the strongest connections during a language task',
+            'Children who learned two languages from birth showed the most activity while switching languages',
+            'All three groups had similar connections at rest but differed during tasks' ],
+          correct: 0 },
+      ],
+    },
     /* Examples:
     A: { type: 'youtube', url: 'https://www.youtube.com/watch?v=XXXXXXXXXXX', durationSec: 300, startSec: 0, questions: [...] },
     B: { type: 'err', url: 'https://jupiter.err.ee/embed/...', durationSec: 300, questions: [...] },
@@ -235,7 +342,7 @@ const CONFIG = {
     /* Fixed problem lists A and B: problems are always shown in the same order.
        Each participant gets one list in Phase 3 (math alone) and the other in Phase 4 (math during video).
        Which list comes in Phase 3 is random (50/50), or set with ?math=A / ?math=B in the URL.
-       The video order is assigned separately (?condition=1 / 2), so the two are fully crossed.
+       The videos and their order are assigned separately (?condition=1–4), so the two are fully crossed.
        Each problem has 3 numbers and uses only + and − (the parser also accepts × ÷ and any count ≥ 2).
        Lists are matched: same order of problem types (13 '+ +', 13 '+ −', 12 '− +', 12 '− −'),
        every intermediate and final result is ≥ 5.
@@ -448,7 +555,6 @@ const SKIP_ON = CONFIG.testing.skipButton || URLP.get('test') === '1' || FAST;
 const $app = document.getElementById('app');
 const $phase = document.getElementById('phaseLabel');
 const $modal = document.getElementById('modal');
-const $lang = document.getElementById('langToggle');
 
 function randomId() {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -461,11 +567,12 @@ function randInt(min, max) {
 }
 
 const forced = URLP.get('condition');
+// condition → [video alone (Phase 2), video during math (Phase 4), language of the whole UI]
+const CONDITIONS = { 1: ['A', 'B', 'et'], 2: ['B', 'A', 'et'], 3: ['C', 'D', 'en'], 4: ['D', 'C', 'en'] };
 const S = {
   pid: URLP.get('pid') || randomId(),
-  condition: (forced === '1' || forced === '2') ? Number(forced) : randInt(1, 2),
-  conditionSource: (forced === '1' || forced === '2') ? 'url' : 'random',
-  lang: CONFIG.languages.includes(URLP.get('lang')) ? URLP.get('lang') : CONFIG.defaultLanguage,
+  condition: CONDITIONS[forced] ? Number(forced) : randInt(1, 4),
+  conditionSource: CONDITIONS[forced] ? 'url' : 'random',
   t0: performance.now(),
   startedAt: new Date().toISOString(),
   events: [],
@@ -475,8 +582,7 @@ const S = {
   onModalClose: null,
   stats: {},
 };
-S.videoSingle = S.condition === 1 ? 'A' : 'B';
-S.videoMulti  = S.condition === 1 ? 'B' : 'A';
+[S.videoSingle, S.videoMulti, S.lang] = CONDITIONS[S.condition];
 const forcedMath = (URLP.get('math') || '').toUpperCase();
 S.mathSource = (forcedMath === 'A' || forcedMath === 'B') ? 'url' : 'random';
 S.mathSingle = S.mathSource === 'url' ? forcedMath : (randInt(1, 2) === 1 ? 'A' : 'B');
@@ -1101,17 +1207,6 @@ function showStart() {
   setPhase(0);
   document.title = t('doc_title');
   document.documentElement.lang = S.lang;
-  if (CONFIG.showLanguageToggle && CONFIG.languages.length > 1) {
-    $lang.hidden = false;
-    $lang.innerHTML = CONFIG.languages.map(l =>
-      `<button type="button" data-l="${l}" aria-pressed="${l === S.lang}">${l.toUpperCase()}</button>`).join('');
-    $lang.querySelectorAll('button').forEach(b => b.onclick = () => {
-      if (b.dataset.l === S.lang) return;
-      S.lang = b.dataset.l;
-      log('language_change', { response: S.lang });
-      showStart();
-    });
-  }
   render(`<div class="card">
     <h1>${esc(t('start_title'))}</h1>${t('start_intro')}
     <h2>${esc(t('consent_title'))}</h2>
@@ -1122,11 +1217,10 @@ function showStart() {
   cb.onchange = () => { btn.disabled = !cb.checked; };
   setSkip('start', () => { cb.checked = true; btn.disabled = false; btn.click(); });
   btn.onclick = () => {
-    $lang.hidden = true;
     log('consent_given', { response: 1 });
     S.active = true;
     if (fsSupported()) enterFullscreen(); else log('fullscreen_unsupported');
-    if (CONFIG.videos.A.type === 'youtube' || CONFIG.videos.B.type === 'youtube') loadYouTubeAPI();
+    if (CONFIG.videos[S.videoSingle].type === 'youtube' || CONFIG.videos[S.videoMulti].type === 'youtube') loadYouTubeAPI();
     showDemographics();
   };
 }

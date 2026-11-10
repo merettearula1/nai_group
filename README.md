@@ -20,19 +20,24 @@ The first ERR video starts with a 5-second cookie window. A wider part of ERR's 
 | Parameter | Values | Effect |
 |---|---|---|
 | `pid` | any text, e.g. `P07` | Participant ID. If left out, a random ID like `PK7M2QX` is generated. |
-| `condition` | `1` / `2` | Video order. `1`: video A alone, video B during math. `2`: the reverse. If left out, it is random. |
+| `condition` | `1`–`4` | Videos and their order. `1`: video A alone, video B during math. `2`: B alone, A during math. `3`: video C alone, video D during math. `4`: D alone, C during math. If left out, it is random (1–4). The language follows the condition: `1`–`2` are in Estonian, `3`–`4` in English (questions and the whole interface). There is no language switch. |
 | `math` | `A` / `B` | Math list for Phase 3 (math alone). The other list is used in Phase 4. If left out, it is random. |
-| `lang` | `et` / `en` | Language. The default is `et`. |
 | `fast` | `1` | Test mode: videos last 20 s and a Skip button appears. |
 | `test` | `1` | Skip button only, with normal timings. |
 
-To get an exact 50/50 split, rotate through these four groups:
+Videos A and B are ERR (Jupiter) clips; videos C and D are YouTube videos (C: BBC World Service, "How reading changes the way your brain works"; D: BBC Ideas, "Is being bilingual good for your brain?").
+
+To get an exact balanced split, rotate through these eight groups:
 
 ```
 P01  ?pid=P01&condition=1&math=A
 P02  ?pid=P02&condition=2&math=B
 P03  ?pid=P03&condition=1&math=B
 P04  ?pid=P04&condition=2&math=A
+P05  ?pid=P05&condition=3&math=A
+P06  ?pid=P06&condition=4&math=B
+P07  ?pid=P07&condition=3&math=B
+P08  ?pid=P08&condition=4&math=A
 ```
 
 ### Steps in the experiment
@@ -90,9 +95,9 @@ No name, email, IP address, location, camera, microphone or keystrokes outside t
 | Column | Content |
 |---|---|
 | `participant_id` | The `pid` from the URL, or the random ID |
-| `condition` | `1` or `2`: video order (see URL parameters) |
+| `condition` | `1`–`4`: which videos and in which order (see URL parameters) |
 | `math_single_list` | `A` or `B`: math list used in Phase 3. The other list was used in Phase 4. |
-| `language` | `et` or `en`: language at the time of the event |
+| `language` | `et` (conditions 1–2) or `en` (conditions 3–4) |
 | `event_index` | Event number: 0, 1, 2, … |
 | `timestamp_ms` | Clock time in Unix milliseconds |
 | `iso_time` | The same time as an ISO date-time (UTC) |
@@ -119,7 +124,6 @@ No name, email, IP address, location, camera, microphone or keystrokes outside t
 | Event | When | Fields used |
 |---|---|---|
 | `session_init` | Page opened | `details`: how the video order and math list were assigned (`url`/`random`), video A/B per phase, math list per phase, test mode, browser (user agent), window size, `file:` or `http:` |
-| `language_change` | Language switched on the start screen | `response` = new language |
 | `consent_given` | Consent checkbox ticked and Start clicked | `response` = 1 |
 | `phase_start` / `phase_end` | Start and end of each phase | `details.name`: `demographics`, `video_single`, `math_single`, `multitask`, `end`; also `video`, `task_condition` |
 | `screen` | Questions intro screen shown | `video`, `task_condition` |
