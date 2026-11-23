@@ -6,6 +6,7 @@ Everything is in one file, `experiment.html`. It runs in the browser and sends n
 
 **Participants:** send them the GitHub Pages link
 `https://merettearula1.github.io/nai_group/` (it redirects to `experiment.html`).
+Estonian students: `https://merettearula1.github.io/nai_group/?lang=et`. English students: `https://merettearula1.github.io/nai_group/?lang=en`.
 Ask them to use a computer, not a phone, with Chrome, Edge or Firefox.
 
 **Locally:**
@@ -20,7 +21,8 @@ The first ERR video starts with an 8-second cookie window. A wider part of ERR's
 | Parameter | Values | Effect |
 |---|---|---|
 | `pid` | any text, e.g. `P07` | Participant ID. If left out, a random ID like `PK7M2QX` is generated. |
-| `condition` | `1`–`4` | Videos and their order. `1`: video A alone, video B during math. `2`: B alone, A during math. `3`: video C alone, video D during math. `4`: D alone, C during math. If left out, it is random (1–4). The language follows the condition: `1`–`2` are in Estonian, `3`–`4` in English (questions and the whole interface). There is no language switch. |
+| `condition` | `1`–`4` | Videos and their order. `1`: video A alone, video B during math. `2`: B alone, A during math. `3`: video C alone, video D during math. `4`: D alone, C during math. If left out, it is random (1–4), or random within the language when `lang` is given. The language follows the condition: `1`–`2` are in Estonian, `3`–`4` in English (questions and the whole interface). |
+| `lang` | `et` / `en` | Language without choosing a condition: `et` gives condition 1 or 2 at random (ERR videos A/B, Estonian), `en` gives 3 or 4 at random (videos C/D, English). If `condition` is also given, `condition` wins. `condition_source` in the data is then `random_et` / `random_en`. |
 | `math` | `A` / `B` | Math list for Phase 3 (math alone). The other list is used in Phase 4. If left out, it is random. |
 | `order` | `multi_first` / `single_first` | Block order. If left out: `multi_first` (multitasking, then video alone, then math alone). `single_first` gives the original order (video alone, math alone, multitasking), used by the first participants. The old links have no `order`, so they now open in the `multi_first` order. |
 | `fast` | `1` | Test mode: videos last 20 s and a Skip button appears. |

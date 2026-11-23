@@ -605,10 +605,15 @@ function randInt(min, max) {
 const forced = URLP.get('condition');
 // condition → [video alone (Phase 2), video during math (Phase 4), language of the whole UI]
 const CONDITIONS = { 1: ['A', 'B', 'et'], 2: ['B', 'A', 'et'], 3: ['C', 'D', 'en'], 4: ['D', 'C', 'en'] };
+// ?lang=et / ?lang=en: random condition within that language (et → 1 or 2, en → 3 or 4).
+// ?condition= wins if both are given. Without either, the condition is random 1–4.
+const forcedLang = (URLP.get('lang') || '').toLowerCase();
+const LANG_CONDS = Object.keys(CONDITIONS).filter(c => CONDITIONS[c][2] === forcedLang).map(Number);
 const S = {
   pid: URLP.get('pid') || randomId(),
-  condition: CONDITIONS[forced] ? Number(forced) : randInt(1, 4),
-  conditionSource: CONDITIONS[forced] ? 'url' : 'random',
+  condition: CONDITIONS[forced] ? Number(forced)
+    : LANG_CONDS.length ? LANG_CONDS[randInt(0, LANG_CONDS.length - 1)] : randInt(1, 4),
+  conditionSource: CONDITIONS[forced] ? 'url' : LANG_CONDS.length ? 'random_' + forcedLang : 'random',
   t0: performance.now(),
   startedAt: new Date().toISOString(),
   events: [],
