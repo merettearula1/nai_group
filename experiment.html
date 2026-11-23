@@ -466,7 +466,8 @@ const CONFIG = {
       video_intro_text: '<p>Järgmisena näete umbes 5-minutilist videot. Vaadake see tähelepanelikult lõpuni – pärast videot vastate selle sisu kohta kuuele küsimusele.</p><p>Videot ei saa peatada ega kerida. Kui video lõpeb, avanevad küsimused automaatselt.</p>',
       start_video_btn: 'Alusta videoga',
       video_click_start: 'Klõpsake video alustamiseks',
-      err_hint: 'Vajutage mängijas esitusnuppu ▶. Video lõpeb automaatselt.',
+      err_hint: '<span class="big">Video käivitamiseks vajutage video keskel esitusnuppu ▶.</span>Video lõpeb automaatselt.',
+      err_play_note: '<p><b>Video ei hakka ise mängima: vajutage video keskel esitusnuppu ▶.</b></p>',
       questions_intro_title: 'Küsimused video kohta',
       questions_intro_text: '<p>Video on lõppenud. Vastake nüüd kuuele küsimusele video sisu kohta. Igal küsimusel on üks õige vastus.</p><p><b>Vastake ainult video põhjal, mitte oma teadmiste põhjal.</b></p><p>Vastamiseks on aega kokku <b>{min} minutit</b>. Järelejäänud aega näete üleval vasakul.</p>',
       questions_timeout_title: 'Aeg on läbi',
@@ -540,7 +541,8 @@ const CONFIG = {
       video_intro_text: '<p>Next you will watch a video of about 5 minutes. Watch it carefully to the end. Afterwards you will answer six questions about its content.</p><p>The video cannot be paused or skipped. When it ends, the questions open automatically.</p>',
       start_video_btn: 'Start video',
       video_click_start: 'Click to start the video',
-      err_hint: 'Press the play button ▶ in the player. The video ends automatically.',
+      err_hint: '<span class="big">Click the play button ▶ in the middle of the video to start it.</span>The video ends automatically.',
+      err_play_note: '<p><b>The video does not start by itself: click the play button ▶ in the middle of the video.</b></p>',
       questions_intro_title: 'Questions about the video',
       questions_intro_text: '<p>The video has ended. Now answer six questions about its content. Each question has one correct answer.</p><p><b>Answer based only on the video, not on your own knowledge.</b></p><p>You have <b>{min} minutes</b> in total. The remaining time is shown at the top left.</p>',
       questions_timeout_title: 'Time is up',
@@ -1006,7 +1008,7 @@ function mountVideo(host, key, taskCondition, onEnd, onPlaying) {
       clearTimeout(noClickT);
       log('video_state', { ...base, response: 'play_assumed',
         details: { trigger: how, wait_ms: Math.round(performance.now() - playerShownAt), cut_after_sec: playSec } });
-      note.hidden = true;
+      note.hidden = true; host.querySelector('.vwrap').classList.remove('cookie-on');
       setFallback(playSec); vTimer(playSec);
     };
     errCleanup = () => { window.removeEventListener('blur', onBlur); window.removeEventListener('keydown', blockTab, true);
@@ -1022,7 +1024,8 @@ function mountVideo(host, key, taskCondition, onEnd, onPlaying) {
     const showPlayer = () => {   // switch to the cropped, locked player and wait for the play click
       playerShownAt = performance.now();
       firePlaying();   // multitasking math starts here: after the cookie window, if there is one
-      note.classList.remove('cookie'); host.querySelector('.vwrap').classList.remove('cookie-on'); note.textContent = t('err_hint'); note.hidden = false;
+      // Play instruction in the same highlighted box (video stays smaller so the box fits) until play is detected.
+      note.innerHTML = t('err_hint'); note.classList.add('cookie'); host.querySelector('.vwrap').classList.add('cookie-on'); note.hidden = false;
       if (lock && VC.errFreeSec > 0) {
         freeOn = true; shield.classList.add('passthrough');
         log('video_free_window', { ...base, response: 'start', details: { seconds: VC.errFreeSec } });
@@ -1392,7 +1395,7 @@ function showVideoSingle() {
   setPhase(2);
   const key = S.videoSingle;
   log('phase_start', { video: key, task_condition: 'single', details: { name: 'video_single' } });
-  render(`<div class="card"><h1>${esc(t('video_intro_title'))}</h1>${t('video_intro_text')}
+  render(`<div class="card"><h1>${esc(t('video_intro_title'))}</h1>${t('video_intro_text')}${CONFIG.videos[key].type === 'err' ? t('err_play_note') : ''}
     <div class="actions"><button id="go">${esc(t('start_video_btn'))}</button></div></div>`);
   setSkip('intro_phase_' + S.phase, () => document.getElementById('go').click());
   document.getElementById('go').onclick = () => {
@@ -1436,7 +1439,7 @@ function showMulti() {
   const key = S.videoMulti;
   log('phase_start', { video: key, task_condition: 'multi', details: { name: 'multitask' } });
   const mathSeen = S.stats.math_single !== undefined;   // multitask first: the arithmetic has not been explained yet
-  render(`<div class="card"><h1>${esc(t('multi_intro_title'))}</h1>${t(mathSeen ? 'multi_intro_text' : 'multi_intro_text_first')}
+  render(`<div class="card"><h1>${esc(t('multi_intro_title'))}</h1>${t(mathSeen ? 'multi_intro_text' : 'multi_intro_text_first')}${CONFIG.videos[key].type === 'err' ? t('err_play_note') : ''}
     <div class="actions"><button id="go">${esc(t('start_multi_btn'))}</button></div></div>`);
   setSkip('intro_phase_' + S.phase, () => document.getElementById('go').click());
   document.getElementById('go').onclick = () => {
