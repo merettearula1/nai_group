@@ -340,6 +340,9 @@ const CONFIG = {
                               //      so the participant cannot pause, seek, change volume or open menus.
     errPlayHole: { w: 0.16, h: 0.26 },  // clickable area before play, as a fraction of the player width / height (centred)
     errLockDelayMs: 400,      // wait after the play click before covering the player (lets the click finish)
+    errFreeSec: 5,            // err: when the zoomed-in player appears, the whole player stays clickable this long
+                              //      (play, pause, anything ERR shows there, e.g. a cookie notice); then the lock
+                              //      above applies. 0 = off.
     errStartOn: 'click',      // err: 'click' = the timer starts when the participant clicks into the player (play);
                               //      'load'  = the timer starts as soon as the player is shown (use if ERR autoplays)
     errCookieSec: 8,          // err: the first ERR video starts with this many seconds in which a wider part of ERR's
@@ -583,7 +586,8 @@ const CONFIG = {
 /* =====================================================================
    STATE, HELPERS, LOGGING
    ===================================================================== */
-const URLP = new URLSearchParams(location.search);
+// A second '?' instead of '&' (e.g. ?lang=et?test=1) is read as '&', so a mistyped link still works.
+const URLP = new URLSearchParams(location.search.replace(/^\?/, '').replace(/\?/g, '&'));
 const FAST = URLP.get('fast') === '1';
 const SKIP_ON = CONFIG.testing.skipButton || URLP.get('test') === '1' || FAST;
 // Test run (?test=1 or ?fast=1): the data is still sent, but saved in the Drive subfolder multitask_data/test.
@@ -979,10 +983,16 @@ function mountVideo(host, key, taskCondition, onEnd, onPlaying) {
     // In 'click' mode the timer starts when focus moves into the player iframe (= the participant clicked play).
     const playSec = v.durationSec + VC.errEndBufferSec;
     let clockOn = false, noClickT = null, cookieT = null, cookieClicks = 0, playerShownAt = performance.now();
+    let freeOn = false, freeT = null, freeClicks = 0;
     // Focus moving into the player iframe = the participant clicked it.
     const onBlur = () => setTimeout(() => {
       if (document.activeElement !== fr || ended) return;
       if (view) { cookieClicks++; return; }   // cookie seconds: clicks are for the cookie notice
+      if (freeOn) {   // free seconds: the player stays open; the first click still starts the clock
+        freeClicks++;
+        if (!clockOn) startClock('player_click');
+        return;
+      }
       if (!clockOn) startClock('player_click');
       else log('video_player_focus', { ...base, details: { note: 'focus moved into the player again; taken back' } });
       setTimeout(() => {
@@ -1000,12 +1010,24 @@ function mountVideo(host, key, taskCondition, onEnd, onPlaying) {
       setFallback(playSec); vTimer(playSec);
     };
     errCleanup = () => { window.removeEventListener('blur', onBlur); window.removeEventListener('keydown', blockTab, true);
-      clearTimeout(noClickT); clearInterval(cookieT); };
+      clearTimeout(noClickT); clearInterval(cookieT); clearTimeout(freeT); };
+    const endFree = () => {   // lock the player again: whole cover if playing, ▶ hole if not yet
+      freeOn = false;
+      if (ended) return;
+      shield.classList.remove('passthrough');
+      if (clockOn) { shield.style.clipPath = 'none'; park(); } else setHole();
+      log('video_free_window', { ...base, response: 'end', details: { clicks: freeClicks } });
+    };
     window.addEventListener('blur', onBlur);   // also catches later attempts to focus the player
     const showPlayer = () => {   // switch to the cropped, locked player and wait for the play click
       playerShownAt = performance.now();
       firePlaying();   // multitasking math starts here: after the cookie window, if there is one
       note.classList.remove('cookie'); host.querySelector('.vwrap').classList.remove('cookie-on'); note.textContent = t('err_hint'); note.hidden = false;
+      if (lock && VC.errFreeSec > 0) {
+        freeOn = true; shield.classList.add('passthrough');
+        log('video_free_window', { ...base, response: 'start', details: { seconds: VC.errFreeSec } });
+        freeT = setTimeout(endFree, VC.errFreeSec * 1000);
+      }
       if (VC.errStartOn === 'click') {
         noClickT = setTimeout(() => startClock('no_click_timeout'), VC.errNoClickTimeoutSec * 1000);
       } else startClock('load');
