@@ -13,7 +13,7 @@ Ask them to use a computer, not a phone, with Chrome, Edge or Firefox.
 python3 -m http.server 8000 --bind 127.0.0.1   # then open http://localhost:8000/experiment.html
 ```
 
-The first ERR video starts with a 10-second cookie window. A wider part of ERR's page is shown so the participant can click "Nõustun vajalike küpsistega" in ERR's cookie notice, with a large highlighted instruction and countdown below the video. The player itself is covered then, so ▶ can't be pressed yet. After 10 s the view switches to the cropped, locked player and the participant presses ▶. The second video has no cookie window. Settings: `CONFIG.video.errCookieSec` (0 = off) and `errCookieView`. Logged as `video_cookie_window` (`start` / `end`).
+The first ERR video starts with an 8-second cookie window. A wider part of ERR's page is shown so the participant can click "Nõustun vajalike küpsistega" in ERR's cookie notice, with a large highlighted instruction and countdown below the video. The player itself is covered then, so ▶ can't be pressed yet. After 8 s the view switches to the cropped, locked player and the participant presses ▶. The second video has no cookie window. Settings: `CONFIG.video.errCookieSec` (0 = off) and `errCookieView`. Logged as `video_cookie_window` (`start` / `end`).
 
 ### URL parameters
 
@@ -22,6 +22,7 @@ The first ERR video starts with a 10-second cookie window. A wider part of ERR's
 | `pid` | any text, e.g. `P07` | Participant ID. If left out, a random ID like `PK7M2QX` is generated. |
 | `condition` | `1`–`4` | Videos and their order. `1`: video A alone, video B during math. `2`: B alone, A during math. `3`: video C alone, video D during math. `4`: D alone, C during math. If left out, it is random (1–4). The language follows the condition: `1`–`2` are in Estonian, `3`–`4` in English (questions and the whole interface). There is no language switch. |
 | `math` | `A` / `B` | Math list for Phase 3 (math alone). The other list is used in Phase 4. If left out, it is random. |
+| `order` | `multi_first` / `single_first` | Block order. If left out: `multi_first` (multitasking, then video alone, then math alone). `single_first` gives the original order (video alone, math alone, multitasking), used by the first participants. The old links have no `order`, so they now open in the `multi_first` order. |
 | `fast` | `1` | Test mode: videos last 20 s and a Skip button appears. |
 | `test` | `1` | Skip button only, with normal timings. |
 
@@ -42,14 +43,16 @@ P08  ?pid=P08&condition=4&math=A
 
 ### Steps in the experiment
 
-| Phase | Content |
+The `phase` code always names the block, not its position, so the data from both orders goes in the same columns with the same codes. Default order (`multi_first`): 0 → 1 → **4 → 2 → 3** → 5. Original order (`?order=single_first`): 0 → 1 → 2 → 3 → 4 → 5. On screen, "Phase n of 5" shows the position.
+
+| Phase code | Content |
 |---|---|
 | 0 | Start screen, consent, fullscreen opens |
-| 1 | Background questions (age, gender, education) |
+| 1 | Background questions (age, gender, education) and a 1–5 self-rating of multitasking ability (1 = low, 5 = very good) |
 | 2 | Video alone (single), then 6 multiple-choice questions (6 minutes in total, with a countdown) |
 | 3 | Math alone (single), 5 minutes |
 | 4 | Video and math at the same time (multi). Math ends when the video ends. Then 6 questions on the video (6 minutes, with a countdown). |
-| 5 | End screen: results, debrief, CSV download |
+| 5 | 1–5 rating of how well the multitasking went (1 = poorly, 5 = very well), then the end screen: results, CSV download |
 
 Math problems come from two fixed lists, A and B. Each list has 50 problems with three numbers and only + and −, shown in the same order to everyone. If a participant reaches the end of a list, it starts again from problem 1. The lists are in `CONFIG.math.fixedProblems`.
 
@@ -102,7 +105,7 @@ No name, email, IP address, location, camera, microphone or keystrokes outside t
 | `timestamp_ms` | Clock time in Unix milliseconds |
 | `iso_time` | The same time as an ISO date-time (UTC) |
 | `t_ms` | Milliseconds since the page was opened |
-| `phase` | Phase 0–5 (see the table above) |
+| `phase` | Phase code 0–5 (see the table above). It names the block, not its position: 4 = multitasking even when it comes first. Use the `block_order` summary row for the order. |
 | `event_type` | What happened (see the event list below) |
 | `task_condition` | `single` (task alone) or `multi` (video and math together) |
 | `video` | `A` or `B`: which video the event belongs to |
@@ -123,7 +126,7 @@ No name, email, IP address, location, camera, microphone or keystrokes outside t
 
 | Event | When | Fields used |
 |---|---|---|
-| `session_init` | Page opened | `details`: how the video order and math list were assigned (`url`/`random`), video A/B per phase, math list per phase, test mode, browser (user agent), window size, `file:` or `http:` |
+| `session_init` | Page opened | `details`: how the video order and math list were assigned (`url`/`random`), video A/B per phase, math list per phase, `block_order` and `block_order_source` (`url`/`default`), test mode, browser (user agent), window size, `file:` or `http:` |
 | `consent_given` | Consent checkbox ticked and Start clicked | `response` = 1 |
 | `phase_start` / `phase_end` | Start and end of each phase | `details.name`: `demographics`, `video_single`, `math_single`, `multitask`, `end`; also `video`, `task_condition` |
 | `screen` | Questions intro screen shown | `video`, `task_condition` |
@@ -135,6 +138,7 @@ No name, email, IP address, location, camera, microphone or keystrokes outside t
 | Event | Fields used |
 |---|---|
 | `demographic` | 3 rows. `item_id` = `age` / `gender` / `education`. `response` = age (18–99), gender (`female`/`male`/`other`), or education (`basic`, `secondary`, `vocational`, `bachelor`, `master`, `doctoral`). `rt_ms` = time to fill in the form. |
+| `self_rating` | 2 rows. `item_id` = `multitask_rating_pre` (phase 1, on the background form: "How would you rate your ability to multitask?", `rt_ms` = time to fill in the form) and `multitask_rating_post` (phase 5, after the last task and before the results: "How well do you think you did when doing both tasks at the same time?", `rt_ms` = time on that screen). `response` = 1–5. |
 
 **Video questions** (6 per video)
 
@@ -165,7 +169,7 @@ No name, email, IP address, location, camera, microphone or keystrokes outside t
 | `video_ready` | YouTube player ready |
 | `video_state` | Player state: `response` = `playing` / `paused` / `buffering` / `ended` …. `details.current_time` = position in seconds. |
 | `video_state` = `play_assumed` | ERR video: the participant clicked ▶ (or no click was seen within 30 s). The 4:36 timer starts here. `details`: `trigger` (`player_click` / `no_click_timeout`), `wait_ms` (time from the player being shown, after the cookie window, to the click), `cut_after_sec` |
-| `video_cookie_window` | ERR, first video only: the 10-second cookie window. `response` = `start` / `end`. `details`: `seconds`, and at the end `clicks` (clicks into ERR's page during the window) |
+| `video_cookie_window` | ERR, first video only: the 8-second cookie window. `response` = `start` / `end`. `details`: `seconds`, and at the end `clicks` (clicks into ERR's page during the window) |
 | `video_player_focus` | ERR video: participant clicked or focused the player again after it started; focus was taken back |
 | `video_key_blocked` | ERR video: Tab key blocked (it would move focus into the player). `response` = key |
 | `video_manual_start_click` | The video didn't start by itself and the participant clicked "Click to start" |
@@ -200,8 +204,14 @@ Written once at the end. `item_id` = field name, `response` = value. These give 
 | `math_single_wrong` / `math_multi_wrong` | Wrong answers |
 | `math_single_mean_rt_ms` / `math_multi_mean_rt_ms` | Mean time per math problem (ms), correct and wrong together |
 | `math_multi_duration_sec` | How long multitasking math actually lasted. Math alone always lasts 300 s. |
+| `multitask_rating_pre` / `multitask_rating_post` | Self-rating 1–5 before the tasks (ability to multitask) and after them (how the multitasking went). Files from before this change have none. |
+| `block_order` | `multi_first` or `single_first`. Files from before this change have no `block_order` row: they are all `single_first`. |
 
 Compare math performance as a rate, e.g. correct answers per minute: `math_single_correct / 5` against `math_multi_correct / (math_multi_duration_sec / 60)`.
+
+### Analysis notebook (Google Colab)
+
+`analysis/multitask_analysis.ipynb` reads every CSV from the Drive folder `multitask_data`, removes duplicate and incomplete files, builds one row per participant, checks data quality and compares single vs multitask performance. Open it in Colab with this link: `https://colab.research.google.com/github/merettearula1/nai_group/blob/main/analysis/multitask_analysis.ipynb` (it works once the notebook is pushed to GitHub). You can also upload the file at colab.research.google.com. Then choose Runtime → Run all and sign in with the Google account that holds `multitask_data`.
 
 ### Turning the CSV into one row per participant (Python)
 

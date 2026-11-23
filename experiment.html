@@ -40,6 +40,13 @@
   .radios { display: flex; gap: 20px; flex-wrap: wrap; }
   .radios label { display: flex; gap: 8px; align-items: center; cursor: pointer; }
   .radios input { width: 20px; height: 20px; }
+  .scale { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+  .scale .end { color: var(--muted); font-size: 16px; }
+  .scale .pts { display: flex; gap: 10px; }
+  .scale .pts label { display: flex; flex-direction: column; align-items: center; gap: 4px; cursor: pointer;
+    padding: 8px 12px; border: 1px solid var(--line); border-radius: 8px; min-width: 52px; font-weight: 600; }
+  .scale .pts label.selected { border-color: var(--accent); background: var(--sel); }
+  .scale .pts input { width: 20px; height: 20px; margin: 0; }
   .err { color: var(--err); font-size: 16px; min-height: 1.4em; margin-top: 4px; }
   .q-text { font-size: 24px; font-weight: 600; margin-bottom: 18px; }
   .opt { display: flex; gap: 14px; align-items: center; padding: 14px 18px; border: 1px solid var(--line);
@@ -335,7 +342,7 @@ const CONFIG = {
     errLockDelayMs: 400,      // wait after the play click before covering the player (lets the click finish)
     errStartOn: 'click',      // err: 'click' = the timer starts when the participant clicks into the player (play);
                               //      'load'  = the timer starts as soon as the player is shown (use if ERR autoplays)
-    errCookieSec: 10,         // err: the first ERR video starts with this many seconds in which a wider part of ERR's
+    errCookieSec: 8,          // err: the first ERR video starts with this many seconds in which a wider part of ERR's
                               //      page is shown, so the participant can accept ERR's cookie notice (in the
                               //      cropped, locked player its buttons can't be reached). 0 = off.
     errCookieView: { x: 250, y: 140, width: 1280, height: 720 },  // part of the page shown then (16:9, where the notice is)
@@ -443,6 +450,14 @@ const CONFIG = {
                   bachelor: 'Bakalaureusekraad', master: 'Magistrikraad', doctoral: 'Doktorikraad' },
       edu_err: 'Palun valige haridustase.',
       continue_btn: 'Jätka',
+      rating_pre_label: 'Kuidas hindate oma oskust teha mitut asja korraga (multitasking)?',
+      rating_pre_low: '1 = madal',
+      rating_pre_high: '5 = väga hea',
+      rating_err: 'Palun valige üks number 1–5.',
+      rating_post_title: 'Teie hinnang',
+      rating_post_label: 'Kuidas teil teie arvates läks kahe ülesande korraga tegemine (video ja arvutamine samal ajal)?',
+      rating_post_low: '1 = halvasti',
+      rating_post_high: '5 = väga hästi',
       err_cookie_hint: '<span class="big">Vajutage ülal ERR-i küpsiste teates nuppu „Nõustun vajalike küpsistega“.</span>Kui teadet ei ole, oodake lihtsalt. Video avaneb <b>{s} s</b> pärast.',
       video_intro_title: 'Video vaatamine',
       video_intro_text: '<p>Järgmisena näete umbes 5-minutilist videot. Vaadake see tähelepanelikult lõpuni – pärast videot vastate selle sisu kohta kuuele küsimusele.</p><p>Videot ei saa peatada ega kerida. Kui video lõpeb, avanevad küsimused automaatselt.</p>',
@@ -462,6 +477,7 @@ const CONFIG = {
       math_wait: 'Arvutusülesanded algavad, kui video käivitub.',
       multi_intro_title: 'Video ja arvutamine korraga',
       multi_intro_text: '<p>Nüüd teete mõlemat ülesannet korraga.</p><p><b>Vasakul</b> mängib uus video. Jälgige seda tähelepanelikult – pärast videot vastate selle kohta kuuele küsimusele.</p><p><b>Paremal</b> lahendage samal ajal arvutusülesandeid nagu varem: kirjutage vastus ja vajutage Enter.</p><p>Püüdke teha mõlemat võimalikult hästi. Kui video lõpeb, lõpeb ka arvutamine.</p>',
+      multi_intro_text_first: '<p>Teete kahte ülesannet korraga.</p><p><b>Vasakul</b> mängib video. Jälgige seda tähelepanelikult – pärast videot vastate selle kohta kuuele küsimusele.</p><p><b>Paremal</b> lahendage samal ajal lihtsaid arvutusülesandeid, ükshaaval: kirjutage vastus ja vajutage <b>Enter</b> – kohe ilmub uus ülesanne.</p><p>Püüdke teha mõlemat võimalikult hästi. Kui video lõpeb, lõpeb ka arvutamine.</p>',
       start_multi_btn: 'Alusta',
       end_title: 'Aitäh osalemast!',
       end_text: '<p>Uuring on lõppenud. Teie vastused on salvestatud. Võite selle akna sulgeda.</p>',
@@ -508,6 +524,14 @@ const CONFIG = {
                   bachelor: "Bachelor's degree", master: "Master's degree", doctoral: 'Doctoral degree' },
       edu_err: 'Please choose your education level.',
       continue_btn: 'Continue',
+      rating_pre_label: 'How would you rate your ability to multitask (do several things at the same time)?',
+      rating_pre_low: '1 = low',
+      rating_pre_high: '5 = very good',
+      rating_err: 'Please choose a number from 1 to 5.',
+      rating_post_title: 'Your rating',
+      rating_post_label: 'How well do you think you did when doing both tasks at the same time (video and arithmetic together)?',
+      rating_post_low: '1 = poorly',
+      rating_post_high: '5 = very well',
       err_cookie_hint: '<span class="big">Click "Nõustun vajalike küpsistega" (accept necessary cookies) in ERR\'s cookie notice above.</span>If there is no notice, just wait. The video opens in <b>{s} s</b>.',
       video_intro_title: 'Watching a video',
       video_intro_text: '<p>Next you will watch a video of about 5 minutes. Watch it carefully to the end. Afterwards you will answer six questions about its content.</p><p>The video cannot be paused or skipped. When it ends, the questions open automatically.</p>',
@@ -527,6 +551,7 @@ const CONFIG = {
       math_wait: 'The arithmetic starts when the video starts playing.',
       multi_intro_title: 'Video and arithmetic together',
       multi_intro_text: '<p>Now you will do both tasks at the same time.</p><p>On the <b>left</b>, a new video will play. Watch it carefully, because afterwards you will answer six questions about it.</p><p>On the <b>right</b>, solve arithmetic problems as before: type your answer and press Enter.</p><p>Try to do both as well as you can. When the video ends, the arithmetic task ends too.</p>',
+      multi_intro_text_first: '<p>You will do two tasks at the same time.</p><p>On the <b>left</b>, a video will play. Watch it carefully, because afterwards you will answer six questions about it.</p><p>On the <b>right</b>, solve simple arithmetic problems, one at a time: type your answer and press <b>Enter</b>. A new problem appears straight away.</p><p>Try to do both as well as you can. When the video ends, the arithmetic task ends too.</p>',
       start_multi_btn: 'Start',
       end_title: 'Thank you for taking part!',
       end_text: '<p>The study is complete. Your answers have been saved. You can close this window.</p>',
@@ -598,6 +623,14 @@ const forcedMath = (URLP.get('math') || '').toUpperCase();
 S.mathSource = (forcedMath === 'A' || forcedMath === 'B') ? 'url' : 'random';
 S.mathSingle = S.mathSource === 'url' ? forcedMath : (randInt(1, 2) === 1 ? 'A' : 'B');
 S.mathMulti  = S.mathSingle === 'A' ? 'B' : 'A';
+// Block order. The `phase` column always names the block, whatever its position:
+// 2 = video alone, 3 = math alone, 4 = multitask. Only the "Phase n of 5" label shown on screen follows the position.
+// Default (also for the old links without ?order=): multitask first. ?order=single_first gives the original order.
+const BLOCK_ORDERS = { multi_first: [4, 2, 3], single_first: [2, 3, 4] };
+const forcedOrder = URLP.get('order');
+S.blockOrder = BLOCK_ORDERS[forcedOrder] ? forcedOrder : 'multi_first';
+S.blockOrderSource = BLOCK_ORDERS[forcedOrder] ? 'url' : 'default';
+const PHASE_SEQ = [1, ...BLOCK_ORDERS[S.blockOrder], 5];
 
 const COLS = ['participant_id', 'condition', 'math_single_list', 'language', 'event_index', 'timestamp_ms', 'iso_time', 't_ms',
   'phase', 'event_type', 'task_condition', 'video', 'item_index', 'item_id', 'difficulty', 'stimulus',
@@ -629,9 +662,20 @@ function t(key, vars) {
 function L(o) { return (o == null || typeof o !== 'object') ? String(o ?? '') : (o[S.lang] ?? o.en ?? Object.values(o)[0]); }
 function esc(s) { return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
 
+/** 1–5 rating scale (radio buttons named `name`), with end labels. */
+function scaleHtml(name, labelId, low, high) {
+  return `<div class="scale" role="radiogroup" aria-labelledby="${labelId}"><span class="end">${esc(low)}</span>
+    <div class="pts">${[1, 2, 3, 4, 5].map(v =>
+      `<label><input type="radio" name="${name}" value="${v}" required>${v}</label>`).join('')}</div>
+    <span class="end">${esc(high)}</span></div>`;
+}
+function markScale(name) {
+  $app.querySelectorAll(`input[name=${name}]`).forEach(r => r.parentElement.classList.toggle('selected', r.checked));
+}
+
 function setPhase(n) {
   S.phase = n;
-  $phase.textContent = n >= 1 ? t('phase_label', { n }) : '';
+  $phase.textContent = n >= 1 ? t('phase_label', { n: PHASE_SEQ.indexOf(n) + 1 }) : '';
 }
 /* Countdown timer (top-right) */
 const Timer = (() => {
@@ -955,6 +999,7 @@ function mountVideo(host, key, taskCondition, onEnd, onPlaying) {
     window.addEventListener('blur', onBlur);   // also catches later attempts to focus the player
     const showPlayer = () => {   // switch to the cropped, locked player and wait for the play click
       playerShownAt = performance.now();
+      firePlaying();   // multitasking math starts here: after the cookie window, if there is one
       note.classList.remove('cookie'); host.querySelector('.vwrap').classList.remove('cookie-on'); note.textContent = t('err_hint'); note.hidden = false;
       if (VC.errStartOn === 'click') {
         noClickT = setTimeout(() => startClock('no_click_timeout'), VC.errNoClickTimeoutSec * 1000);
@@ -1010,7 +1055,7 @@ function mountVideo(host, key, taskCondition, onEnd, onPlaying) {
   }
 
   setSkip('video_' + taskCondition, () => finish('test_skip'));
-  if (v.type !== 'youtube' && v.type !== 'mp4') firePlaying();
+  if (!['youtube', 'mp4', 'err'].includes(v.type)) firePlaying();   // err fires in showPlayer()
   return { destroy: () => { ended = true; cleanup(); }, skip: () => finish('test_skip') };
 }
 
@@ -1259,31 +1304,39 @@ function showDemographics() {
       <select id="edu" required><option value="">${esc(t('edu_placeholder'))}</option>${Object.keys(e).map(k =>
         `<option value="${k}">${esc(e[k])}</option>`).join('')}</select>
       <div class="err" id="eErr"></div></div>
+    <div class="field"><span class="lbl" id="rLbl">${esc(t('rating_pre_label'))}</span>
+      ${scaleHtml('rating', 'rLbl', t('rating_pre_low'), t('rating_pre_high'))}
+      <div class="err" id="rErr"></div></div>
     <div class="actions"><button id="cont" disabled>${esc(t('continue_btn'))}</button></div></div>`);
 
   const age = document.getElementById('age'), edu = document.getElementById('edu'), btn = document.getElementById('cont');
-  const touched = { age: false, gender: false, edu: false };
+  const touched = { age: false, gender: false, edu: false, rating: false };
   const shownAt = performance.now();
   function check() {
     const a = age.value.trim();
     const ageOk = /^\d+$/.test(a) && +a >= 18 && +a <= 99;
     const gSel = $app.querySelector('input[name=gender]:checked');
     const eduOk = edu.value !== '';
+    const rSel = $app.querySelector('input[name=rating]:checked');
     document.getElementById('ageErr').textContent = touched.age && !ageOk ? t('age_err') : '';
     document.getElementById('gErr').textContent = touched.gender && !gSel ? t('gender_err') : '';
     document.getElementById('eErr').textContent = touched.edu && !eduOk ? t('edu_err') : '';
-    btn.disabled = !(ageOk && gSel && eduOk);
-    return { ageOk, gSel, eduOk };
+    document.getElementById('rErr').textContent = touched.rating && !rSel ? t('rating_err') : '';
+    markScale('rating');
+    btn.disabled = !(ageOk && gSel && eduOk && rSel);
+    return { ageOk, gSel, eduOk, rSel };
   }
   age.addEventListener('input', () => { if (age.value !== '') touched.age = true; check(); });
   age.addEventListener('blur', () => { touched.age = true; check(); });
   $app.querySelectorAll('input[name=gender]').forEach(r => r.addEventListener('change', () => { touched.gender = true; check(); }));
   edu.addEventListener('change', () => { touched.edu = true; check(); });
   edu.addEventListener('blur', () => { touched.edu = true; check(); });
+  $app.querySelectorAll('input[name=rating]').forEach(r => r.addEventListener('change', () => { touched.rating = true; check(); }));
   setSkip('demographics', () => {   // fill with dummy test values
     age.value = '30';
     $app.querySelector('input[name=gender][value=other]').checked = true;
     edu.value = Object.keys(e)[0];
+    $app.querySelector('input[name=rating][value="3"]').checked = true;
     btn.disabled = false; btn.click();
   });
   btn.onclick = () => {
@@ -1294,9 +1347,18 @@ function showDemographics() {
     log('demographic', { item_id: 'age', response: S.demographics.age, rt_ms: rt });
     log('demographic', { item_id: 'gender', response: S.demographics.gender, rt_ms: rt });
     log('demographic', { item_id: 'education', response: S.demographics.education, rt_ms: rt });
+    // Self-rating is its own event type (not 'demographic'), so it is easy to find and pairs with the post rating.
+    S.ratingPre = +c.rSel.value;
+    log('self_rating', { item_id: 'multitask_rating_pre', response: S.ratingPre, rt_ms: rt });
     log('phase_end', { details: { name: 'demographics' } });
-    showVideoSingle();
+    nextPhase(1);
   };
+}
+
+/** Goes to the block after `done` in this participant's block order (PHASE_SEQ). */
+function nextPhase(done) {
+  const next = PHASE_SEQ[PHASE_SEQ.indexOf(done) + 1];
+  ({ 2: showVideoSingle, 3: showMathSingle, 4: showMulti, 5: showEnd })[next]();
 }
 
 function showVideoSingle() {
@@ -1311,7 +1373,7 @@ function showVideoSingle() {
     mountVideo(document.getElementById('vhost'), key, 'single', () => {
       runQuestions(key, 'single', () => {
         log('phase_end', { video: key, task_condition: 'single', details: { name: 'video_single' } });
-        showMathSingle();
+        nextPhase(2);
       });
     });
   };
@@ -1335,7 +1397,7 @@ function showMathSingle() {
       clearTimeout(limitT); Timer.stop();
       S.stats.math_single = summarizeMath(task.stop(reason));
       log('phase_end', { task_condition: 'single', details: { name: 'math_single' } });
-      showMulti();
+      nextPhase(3);
     };
     const limitT = setTimeout(() => end('time_limit'), dur * 1000);
     setSkip('math_single', () => end('test_skip'));
@@ -1346,7 +1408,8 @@ function showMulti() {
   setPhase(4);
   const key = S.videoMulti;
   log('phase_start', { video: key, task_condition: 'multi', details: { name: 'multitask' } });
-  render(`<div class="card"><h1>${esc(t('multi_intro_title'))}</h1>${t('multi_intro_text')}
+  const mathSeen = S.stats.math_single !== undefined;   // multitask first: the arithmetic has not been explained yet
+  render(`<div class="card"><h1>${esc(t('multi_intro_title'))}</h1>${t(mathSeen ? 'multi_intro_text' : 'multi_intro_text_first')}
     <div class="actions"><button id="go">${esc(t('start_multi_btn'))}</button></div></div>`);
   setSkip('intro_phase_' + S.phase, () => document.getElementById('go').click());
   document.getElementById('go').onclick = () => {
@@ -1360,7 +1423,7 @@ function showMulti() {
       S.stats.math_multi = { ...summarizeMath(st), duration_sec: startedAt === null ? 0 : Math.round((performance.now() - startedAt) / 100) / 10 };
       runQuestions(key, 'multi', () => {
         log('phase_end', { video: key, task_condition: 'multi', details: { name: 'multitask' } });
-        showEnd();
+        nextPhase(4);
       });
     }, startMath);
   };
@@ -1374,6 +1437,24 @@ function summarizeMath(st) {
 function showEnd() {
   setPhase(5);
   log('phase_start', { details: { name: 'end' } });
+  // After the last task and before the results: rate how the multitasking went (1–5).
+  render(`<div class="card"><h1>${esc(t('rating_post_title'))}</h1>
+    <div class="field"><span class="lbl" id="rLbl">${esc(t('rating_post_label'))}</span>
+      ${scaleHtml('rating', 'rLbl', t('rating_post_low'), t('rating_post_high'))}</div>
+    <div class="actions"><button id="cont" disabled>${esc(t('continue_btn'))}</button></div></div>`);
+  const btn = document.getElementById('cont'), shownAt = performance.now();
+  $app.querySelectorAll('input[name=rating]').forEach(r => r.addEventListener('change', () => { markScale('rating'); btn.disabled = false; }));
+  setSkip('rating_post', () => { $app.querySelector('input[name=rating][value="3"]').checked = true; btn.disabled = false; btn.click(); });
+  btn.onclick = () => {
+    const sel = $app.querySelector('input[name=rating]:checked');
+    if (!sel) return;
+    S.ratingPost = +sel.value;
+    log('self_rating', { item_id: 'multitask_rating_post', response: S.ratingPost, rt_ms: Math.round(performance.now() - shownAt) });
+    showResults();
+  };
+}
+
+function showResults() {
   const s = S.stats;
   const summary = {
     video_single_id: S.videoSingle, video_single_correct: s.video_single?.correct ?? '',
@@ -1386,10 +1467,12 @@ function showEnd() {
     math_multi_attempted: s.math_multi?.attempted ?? '', math_multi_correct: s.math_multi?.correct ?? '',
     math_multi_wrong: s.math_multi?.wrong ?? '', math_multi_mean_rt_ms: s.math_multi?.mean_rt_ms ?? '',
     math_multi_duration_sec: s.math_multi?.duration_sec ?? '',
+    block_order: S.blockOrder,
+    multitask_rating_pre: S.ratingPre ?? '', multitask_rating_post: S.ratingPost ?? '',
   };
   S.summary = summary;
   for (const k in summary) log('summary', { item_id: k, response: summary[k] });
-  log('experiment_end', { details: { condition_source: S.conditionSource, fast_mode: FAST } });
+  log('experiment_end', { details: { condition_source: S.conditionSource, block_order: S.blockOrder, fast_mode: FAST } });
   S.active = false;
   closeModal();
   exitFullscreen();
@@ -1411,7 +1494,7 @@ function showEnd() {
   render(`<div class="card"><h1>${esc(t('end_title'))}</h1>${t('end_text')}
     ${resultsHtml}
     <h2>${esc(t('researcher_title'))}</h2>
-    <p class="muted">ID: <b>${esc(S.pid)}</b> · condition ${S.condition} (${S.conditionSource}) · math ${S.mathSingle} alone / ${S.mathMulti} multi (${S.mathSource})${FAST ? ' · TEST MODE' : ''} · ${S.events.length} events</p>
+    <p class="muted">ID: <b>${esc(S.pid)}</b> · condition ${S.condition} (${S.conditionSource}) · math ${S.mathSingle} alone / ${S.mathMulti} multi (${S.mathSource}) · ${S.blockOrder}${FAST ? ' · TEST MODE' : ''} · ${S.events.length} events</p>
     <p id="upStatus" class="muted" hidden></p>
     <div class="actions"><button id="upRetry" hidden>${esc(t('upload_retry'))}</button>
     <button id="csv" class="secondary" hidden>${esc(t('download_csv'))}</button></div></div>`);
@@ -1465,7 +1548,8 @@ function exportJSON() {
   return {
     participant_id: S.pid, condition: S.condition, condition_source: S.conditionSource, language: S.lang,
     video_single: S.videoSingle, video_multi: S.videoMulti,
-    math_single_list: S.mathSingle, math_multi_list: S.mathMulti, math_source: S.mathSource, fast_mode: FAST,
+    math_single_list: S.mathSingle, math_multi_list: S.mathMulti, math_source: S.mathSource,
+    block_order: S.blockOrder, block_order_source: S.blockOrderSource, fast_mode: FAST,
     started_at: S.startedAt, user_agent: navigator.userAgent,
     screen: { width: screen.width, height: screen.height, dpr: window.devicePixelRatio },
     demographics: S.demographics || null, summary: S.summary || null, events: S.events,
@@ -1485,7 +1569,8 @@ function download(name, content, type) {
 
 log('session_init', { details: { condition_source: S.conditionSource, video_single: S.videoSingle,
   video_multi: S.videoMulti, math_single_list: S.mathSingle, math_multi_list: S.mathMulti,
-  math_source: S.mathSource, fast_mode: FAST, user_agent: navigator.userAgent,
+  math_source: S.mathSource, block_order: S.blockOrder, block_order_source: S.blockOrderSource,
+  fast_mode: FAST, user_agent: navigator.userAgent,
   viewport: `${innerWidth}x${innerHeight}`, protocol: location.protocol } });
 showStart();
 </script>
