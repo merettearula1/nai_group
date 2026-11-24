@@ -32,6 +32,11 @@ const TEST_FOLDER_NAME = 'test';                // subfolder of FOLDER_NAME for 
 const MAX_PER_HOUR = 30;                        // emails per hour; more are rejected (protects your inbox)
 const MAX_BYTES = 2 * 1024 * 1024;              // largest accepted CSV
 const CSV_HEADER = 'participant_id,condition,math_single_list,';   // how experiment CSVs start
+// Optional names for Jaan Aru's NAI course extra credit: one file in a subfolder of FOLDER_NAME
+// (test runs: FOLDER_NAME/TEST_FOLDER_NAME/CREDIT_FOLDER_NAME). Not linked to participant IDs or answers.
+const CREDIT_FOLDER_NAME = 'NAI_course_credits';
+const CREDIT_FILE_NAME = 'NAI_course_credit_names.csv';
+const MAX_CREDITS_PER_HOUR = 60;
 
 function doPost(e) {
   try {
@@ -39,6 +44,7 @@ function doPost(e) {
     if (!RECIPIENT) return reply({ ok: false, error: 'Script property RECIPIENT not set' });
     if (!e.postData || e.postData.contents.length > MAX_BYTES) return reply({ ok: false, error: 'too large' });
     const d = JSON.parse(e.postData.contents);
+    if (d.type === 'credit') return saveCreditName(d);
 
     // Accept only real experiment data.
     const csv = String(d.csv || '').replace(/^\uFEFF/, '');
@@ -77,6 +83,37 @@ function doPost(e) {
     return reply({ ok: true });
   } catch (err) {
     return reply({ ok: false, error: String(err) });
+  }
+}
+
+/** Appends one name (with a time stamp) to the NAI course credit file. No email is sent. */
+function saveCreditName(d) {
+  const name = String(d.name || '').replace(/\s+/g, ' ').trim();
+  if (!name || name.length > 100) return reply({ ok: false, error: 'bad name' });
+  const lock = LockService.getScriptLock(); lock.waitLock(10000);
+  try {
+    const cache = CacheService.getScriptCache();
+    const key = 'c_' + Utilities.formatDate(new Date(), 'UTC', 'yyyyMMddHH');
+    const n = Number(cache.get(key) || 0);
+    if (n >= MAX_CREDITS_PER_HOUR) return reply({ ok: false, error: 'rate limit, try again later' });
+    cache.put(key, String(n + 1), 3700);
+
+    const parent = d.test === true ? getTestFolder() : getFolder();
+    const fi = parent.getFoldersByName(CREDIT_FOLDER_NAME);
+    const folder = fi.hasNext() ? fi.next() : parent.createFolder(CREDIT_FOLDER_NAME);
+    // Quote the name; a leading = + - @ is prefixed with ' so Excel/Sheets don't run it as a formula.
+    const safe = '"' + name.replace(/^([=+\-@])/, "'$1").replace(/"/g, '""') + '"';
+    const row = Utilities.formatDate(new Date(), 'Europe/Tallinn', 'yyyy-MM-dd HH:mm') + ',' + safe + '\r\n';
+    const it = folder.getFilesByName(CREDIT_FILE_NAME);
+    if (it.hasNext()) {
+      const f = it.next();
+      f.setContent(f.getBlob().getDataAsString('UTF-8') + row);
+    } else {
+      folder.createFile(CREDIT_FILE_NAME, '\uFEFFtime,name\r\n' + row, 'text/csv');
+    }
+    return reply({ ok: true });
+  } finally {
+    lock.releaseLock();
   }
 }
 

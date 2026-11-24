@@ -78,6 +78,10 @@ Setup is described at the top of `email_apps_script.gs`. Use your personal Googl
 
 New CSV events: `data_upload_start`, `data_upload_ok`, `data_upload_error` (`details.message`).
 
+### Names for NAI course extra credit (optional)
+
+The end screen has an optional field: participants taking Jaan Aru's NAI course can enter their name for extra credit and press **Send name**. The name is sent on its own to the same Apps Script, without the participant ID or any answers, and is not written to the CSV. The script adds one row (`time,name`) to `multitask_data/NAI_course_credits/NAI_course_credit_names.csv` (test links: `multitask_data/test/NAI_course_credits/…`). No email is sent for names. At most 60 names per hour are accepted.
+
 ## Saving the data
 
 - **Main copy:** the **Download CSV** button on the end screen saves `multitask_<pid>_<date-time>.csv`. Click it for every participant and back the file up the same day.
@@ -95,7 +99,7 @@ The CSV is UTF-8 with a BOM, so Excel shows õ, ä, ö and ü correctly. It is c
 
 ### What is *not* collected
 
-No name, email, IP address, location, camera, microphone or keystrokes outside the math answer box. A participant is identified only by `pid`.
+No name (except the optional extra-credit name, kept in a separate file and not linked to the data; see above), email, IP address, location, camera, microphone or keystrokes outside the math answer box. A participant is identified only by `pid`.
 
 ### CSV columns (every row has all columns; blank = not relevant to that event)
 

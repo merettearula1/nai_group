@@ -35,7 +35,7 @@
   .check input { width: 22px; height: 22px; margin-top: 4px; flex: none; }
   .field { margin: 20px 0; }
   .field > .lbl { display: block; font-weight: 600; margin-bottom: 6px; }
-  input[type=number], select { font: inherit; padding: 8px 12px; border: 1px solid #b5b5ae;
+  input[type=number], input[type=text], select { font: inherit; padding: 8px 12px; border: 1px solid #b5b5ae;
     border-radius: 6px; width: 100%; max-width: 360px; background: #fff; color: var(--fg); }
   .radios { display: flex; gap: 20px; flex-wrap: wrap; }
   .radios label { display: flex; gap: 8px; align-items: center; cursor: pointer; }
@@ -500,6 +500,13 @@ const CONFIG = {
       upload_ok: '✓ Andmed saadeti uurija e-postile.',
       upload_fail: '✗ Saatmine ebaõnnestus. Laadige CSV alla ja proovige uuesti.',
       upload_retry: 'Saada uuesti',
+      credit_title: 'Lisapunktid (valikuline)',
+      credit_text: '<p>Kui osalete Jaan Aru NAI kursusel ja soovite lisapunkte, kirjutage siia oma nimi. Nimi salvestatakse eraldi failis ja seda ei seota teie vastustega.</p>',
+      credit_placeholder: 'Ees- ja perekonnanimi',
+      credit_btn: 'Saada nimi',
+      credit_sending: 'Nime saatmine…',
+      credit_ok: '✓ Nimi saadeti. Aitäh!',
+      credit_fail: '✗ Saatmine ebaõnnestus. Proovige uuesti.',
       fs_title: 'Palun naaske täisekraanile',
       fs_text: '<p>Uuring peab toimuma täisekraanirežiimis.</p>',
       fs_btn: 'Naase täisekraanile',
@@ -575,6 +582,13 @@ const CONFIG = {
       upload_ok: '✓ Data sent to the researcher\'s email.',
       upload_fail: '✗ Sending failed. Download the CSV and try again.',
       upload_retry: 'Send again',
+      credit_title: 'Extra credit (optional)',
+      credit_text: '<p>If you take Jaan Aru\'s NAI course and want extra credit, write your name here. Your name is saved in a separate file and is not linked to your answers.</p>',
+      credit_placeholder: 'First and last name',
+      credit_btn: 'Send name',
+      credit_sending: 'Sending name…',
+      credit_ok: '✓ Name sent. Thank you!',
+      credit_fail: '✗ Sending failed. Please try again.',
       fs_title: 'Please return to fullscreen',
       fs_text: '<p>The study must run in fullscreen.</p>',
       fs_btn: 'Return to fullscreen',
@@ -1523,6 +1537,11 @@ function showResults() {
 
   render(`<div class="card"><h1>${esc(t('end_title'))}</h1>${t('end_text')}
     ${resultsHtml}
+    ${CONFIG.upload?.url ? `<h2>${esc(t('credit_title'))}</h2>${t('credit_text')}
+    <div class="actions"><input type="text" id="creditName" maxlength="100" autocomplete="name"
+      placeholder="${esc(t('credit_placeholder'))}" style="flex:1;min-width:220px">
+    <button id="creditSend">${esc(t('credit_btn'))}</button></div>
+    <p id="creditStatus" class="muted" hidden></p>` : ''}
     <h2>${esc(t('researcher_title'))}</h2>
     <p class="muted">ID: <b>${esc(S.pid)}</b> · condition ${S.condition} (${S.conditionSource}) · math ${S.mathSingle} alone / ${S.mathMulti} multi (${S.mathSource}) · ${S.blockOrder}${FAST ? ' · TEST MODE' : ''} · ${S.events.length} events</p>
     <p id="upStatus" class="muted" hidden></p>
@@ -1534,6 +1553,8 @@ function showResults() {
   // Download CSV is shown only as a fallback: when email sending is not set up or has failed.
   if (CONFIG.upload?.url) {
     document.getElementById('upRetry').onclick = () => uploadCSV(fileName);
+    document.getElementById('creditSend').onclick = sendCreditName;
+    document.getElementById('creditName').onkeydown = e => { if (e.key === 'Enter') sendCreditName(); };
     uploadCSV(fileName);
   } else {
     document.getElementById('csv').hidden = false;
@@ -1560,6 +1581,28 @@ async function uploadCSV(fileName) {
   } catch (err) {
     log('data_upload_error', { response: fileName, details: { message: String(err.message || err) } });
     show('upload_fail', true);
+  }
+}
+
+/** Optional: sends the participant's name for NAI course extra credit. Sent on its own, without the
+    participant ID or any answers, and not written to the CSV, so names can't be linked to the data. */
+async function sendCreditName() {
+  const inp = document.getElementById('creditName'), btn = document.getElementById('creditSend');
+  const st = document.getElementById('creditStatus');
+  const name = inp.value.trim().replace(/\s+/g, ' ');
+  if (!name) { inp.focus(); return; }
+  const show = (key, isErr) => { st.hidden = false; st.textContent = t(key); st.style.color = isErr ? 'var(--err)' : ''; };
+  btn.disabled = inp.disabled = true;
+  show('credit_sending');
+  try {
+    const res = await fetch(CONFIG.upload.url, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ type: 'credit', name, test: IS_TEST }) });
+    const out = await res.json().catch(() => ({}));
+    if (!out.ok) throw new Error(out.error || `HTTP ${res.status}`);
+    show('credit_ok');
+  } catch (err) {
+    show('credit_fail', true);
+    btn.disabled = inp.disabled = false;
   }
 }
 
